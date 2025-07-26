@@ -1,4 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 
 function defaultMultiSort(a, b) {
   const dateA = a.date || '';
@@ -26,6 +37,13 @@ function MatchResults() {
   const [sortOrder, setSortOrder] = useState('asc');
   const [changed, setChanged] = useState({}); // Track changed matches
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [message, setMessage] = useState(null); // For displaying success/error messages
+
+  // Function to display a temporary message
+  const displayMessage = (msg, type = 'success') => {
+    setMessage({ text: msg, type });
+    setTimeout(() => setMessage(null), 3000); // Clear message after 3 seconds
+  };
 
   useEffect(() => {
     fetchMatches();
@@ -46,9 +64,10 @@ function MatchResults() {
         };
       });
       setInputs(initialInputs);
-      setChanged({});
+      setChanged({}); // Reset changed status on fetch
     } catch (err) {
-      setError('Failed to fetch matches');
+      setError('Failed to fetch matches.');
+      displayMessage('Failed to fetch matches.', 'error');
     }
     setLoading(false);
   };
@@ -78,16 +97,18 @@ function MatchResults() {
     let winnerIds = [];
     if (winnerTeam === 'team1') winnerIds = (match.team1Players || []).map(p => p.id);
     else if (winnerTeam === 'team2') winnerIds = (match.team2Players || []).map(p => p.id);
+
     try {
-      await fetch('/api/results', {
+      const res = await fetch('/api/results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ matchId, winnerIds, score: scoreInput })
       });
-      await fetchMatches();
-      alert('Result updated!');
+      if (!res.ok) throw new Error('Failed to update result');
+      await fetchMatches(); // Re-fetch all matches to ensure data consistency
+      displayMessage('Result updated successfully!', 'success');
     } catch (err) {
-      alert('Failed to update result');
+      displayMessage('Failed to update result.', 'error');
     }
     setUpdating(prev => ({ ...prev, [matchId]: false }));
   };
@@ -102,6 +123,7 @@ function MatchResults() {
       else if (winnerTeam === 'team2') winnerIds = (match.team2Players || []).map(p => p.id);
       return { matchId: Number(matchId), winnerIds, score: scoreInput };
     });
+
     try {
       await Promise.all(updates.map(update =>
         fetch('/api/results', {
@@ -111,9 +133,9 @@ function MatchResults() {
         })
       ));
       await fetchMatches();
-      alert('All selected results updated!');
+      displayMessage('All selected results updated!', 'success');
     } catch (err) {
-      alert('Failed to update some results');
+      displayMessage('Failed to update some results.', 'error');
     }
     setBulkUpdating(false);
   };
@@ -136,9 +158,9 @@ function MatchResults() {
         })
       ));
       await fetchMatches();
-      alert('All records force updated!');
+      displayMessage('All records force updated!', 'success');
     } catch (err) {
-      alert('Failed to force update some results');
+      displayMessage('Failed to force update some results.', 'error');
     }
     setBulkUpdating(false);
   };
@@ -180,193 +202,158 @@ function MatchResults() {
     return sorted;
   }
 
-  if (loading) return <div className="loader">Loading matches...</div>;
-  if (error) return <div style={{color:'red'}}>{error}</div>;
-  if (!matches.length) return <div>No matches found.</div>;
+  if (loading) return <div className="text-center text-lg mt-10">Loading matches...</div>;
+  if (error) return <div className="text-center text-red-500 mt-10">{error}</div>;
+  if (!matches.length) return <div className="text-center text-lg mt-10">No matches found.</div>;
 
   return (
-    <div className="match-results-container">
-      <h2>Update Match Results</h2>
-      <div className="sort-controls">
-        <span>Sort by: </span>
-        <button className={sortBy==='date' ? 'active' : ''} onClick={() => handleSort('date')}>Date {sortBy==='date' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
-        <button className={sortBy==='court' ? 'active' : ''} onClick={() => handleSort('court')}>Court {sortBy==='court' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
-        <button className={sortBy==='id' ? 'active' : ''} onClick={() => handleSort('id')}>ID {sortBy==='id' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
-        <button className={sortBy==='matchCode' ? 'active' : ''} onClick={() => handleSort('matchCode')}>Match {sortBy==='matchCode' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
-        {sortBy && <button style={{marginLeft:8}} onClick={()=>setSortBy('')}>Reset</button>}
-      </div>
-      <button
-        className="update-btn"
-        style={{marginBottom:16, float:'right'}}
-        onClick={handleBulkUpdate}
-        disabled={bulkUpdating || Object.keys(changed).length === 0}
-      >
-        {bulkUpdating ? 'Updating All...' : `Update All (${Object.keys(changed).length})`}
-      </button>
-      <button
-        className="update-btn"
-        style={{marginBottom:16, float:'right', marginRight:12, background:'#ffb347', color:'#222'}}
-        onClick={handleForceBulkUpdate}
-        disabled={bulkUpdating}
-      >
-        {bulkUpdating ? 'Force Updating...' : 'Force Update All'}
-      </button>
-      <table className="match-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Date</th>
-            <th>Court</th>
-            <th>Code</th>
-            <th>Type</th>
-            <th colSpan={2}>Teams</th>
-            <th>Winner</th>
-            <th>Score</th>
-            <th>Update</th>
-          </tr>
-        </thead>
-        <tbody>
-          {getSortedMatches().map(match => {
-            const team1 = match.team1Players || [];
-            const team2 = match.team2Players || [];
-            return (
-              <tr key={match.id}>
-                <td>{match.id}</td>
-                <td>{match.date ? match.date.slice(0, 10) : ''}</td>
-                <td>{match.court || ''}</td>
-                <td>{match.matchCode || ''}</td>
-                <td>{match.matchType || ''}</td>
-                <td>
-                  <b>Team 1</b>
-                  <ul style={{margin:0,paddingLeft:16}}>
-                    {team1.map(p => <li key={p.id}>{p.name} (ID: {p.id})</li>)}
-                  </ul>
-                </td>
-                <td>
-                  <b>Team 2</b>
-                  <ul style={{margin:0,paddingLeft:16}}>
-                    {team2.map(p => <li key={p.id}>{p.name} (ID: {p.id})</li>)}
-                  </ul>
-                </td>
-                <td>
-                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                    <button
-                      className={inputs[match.id]?.winnerTeam==='team1'?'winner-btn selected':'winner-btn'}
-                      onClick={() => handleInputChange(match.id, 'winnerTeam', 'team1')}
-                    >Team 1</button>
-                    <button
-                      className={inputs[match.id]?.winnerTeam==='team2'?'winner-btn selected':'winner-btn'}
-                      onClick={() => handleInputChange(match.id, 'winnerTeam', 'team2')}
-                    >Team 2</button>
-                  </div>
-                </td>
-                <td>
-                  <input
-                    className="score-input"
-                    type="text"
-                    value={inputs[match.id]?.scoreInput || ''}
-                    onChange={e => handleInputChange(match.id, 'scoreInput', e.target.value)}
-                    placeholder="Score"
-                  />
-                </td>
-                <td>
-                  <button
-                    className="update-btn"
-                    onClick={() => handleUpdate(match.id, match)}
-                    disabled={updating[match.id]}
-                  >
-                    {updating[match.id] ? 'Updating...' : 'Update'}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <style>{`
-        .match-results-container {
-          max-width: 1100px;
-          margin: 32px auto;
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-          padding: 32px 24px 24px 24px;
-        }
-        .match-results-container h2 {
-          text-align: center;
-          margin-bottom: 24px;
-        }
-        .sort-controls {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 18px;
-          justify-content: center;
-        }
-        .sort-controls button {
-          background: #f0f0f0;
-          border: none;
-          border-radius: 4px;
-          padding: 6px 14px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .sort-controls button.active, .sort-controls button:hover {
-          background: #b3e6ff;
-        }
-        .match-table {
-          width: 100%;
-          border-collapse: collapse;
-          background: #fafcff;
-        }
-        .match-table th, .match-table td {
-          border: 1px solid #e0e0e0;
-          padding: 8px 10px;
-          text-align: center;
-        }
-        .match-table th {
-          background: #e6f7ff;
-        }
-        .winner-btn {
-          background: #f0f0f0;
-          border: 1px solid #b3e6b3;
-          border-radius: 4px;
-          padding: 4px 10px;
-          margin: 2px 0;
-          cursor: pointer;
-          transition: background 0.2s, border 0.2s;
-        }
-        .winner-btn.selected {
-          background: #b3e6b3;
-          border: 2px solid #4caf50;
-        }
-        .score-input {
-          width: 70px;
-          padding: 4px 6px;
-          border-radius: 4px;
-          border: 1px solid #b3e6ff;
-        }
-        .update-btn {
-          background: #4caf50;
-          color: #fff;
-          border: none;
-          border-radius: 4px;
-          padding: 6px 16px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .update-btn:disabled {
-          background: #bdbdbd;
-          cursor: not-allowed;
-        }
-        .loader {
-          text-align: center;
-          font-size: 1.2rem;
-          margin-top: 40px;
-        }
-      `}</style>
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+      <Card className="shadow-lg rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center mb-6">Update Match Results</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Message Display */}
+          {message && (
+            <div className={`p-3 mb-4 rounded-md text-center ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {message.text}
+            </div>
+          )}
+
+          <div className="flex flex-wrap justify-center items-center gap-3 mb-6">
+            <span className="font-medium">Sort by:</span>
+            <Button
+              variant={sortBy === 'date' ? 'default' : 'outline'}
+              onClick={() => handleSort('date')}
+              className="px-4 py-2"
+            >
+              Date {sortBy === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </Button>
+            <Button
+              variant={sortBy === 'court' ? 'default' : 'outline'}
+              onClick={() => handleSort('court')}
+              className="px-4 py-2"
+            >
+              Court {sortBy === 'court' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </Button>
+            <Button
+              variant={sortBy === 'id' ? 'default' : 'outline'}
+              onClick={() => handleSort('id')}
+              className="px-4 py-2"
+            >
+              ID {sortBy === 'id' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </Button>
+            <Button
+              variant={sortBy === 'matchCode' ? 'default' : 'outline'}
+              onClick={() => handleSort('matchCode')}
+              className="px-4 py-2"
+            >
+              Match {sortBy === 'matchCode' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </Button>
+            {sortBy && (
+              <Button variant="outline" onClick={() => setSortBy('')} className="px-4 py-2">
+                Reset
+              </Button>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 mb-6">
+            <Button
+              onClick={handleBulkUpdate}
+              disabled={bulkUpdating || Object.keys(changed).length === 0}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out"
+            >
+              {bulkUpdating ? 'Updating All...' : `Update Selected (${Object.keys(changed).length})`}
+            </Button>
+            <Button
+              onClick={handleForceBulkUpdate}
+              disabled={bulkUpdating}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out"
+            >
+              {bulkUpdating ? 'Force Updating...' : 'Force Update All'}
+            </Button>
+          </div>
+
+          <Table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm">
+            <TableHeader className="bg-gray-100">
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Court</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead colSpan={2}>Teams</TableHead>
+                <TableHead>Winner</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Update</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {getSortedMatches().map(match => {
+                const team1 = match.team1Players || [];
+                const team2 = match.team2Players || [];
+                return (
+                  <TableRow key={match.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <TableCell className="font-medium">{match.id}</TableCell>
+                    <TableCell>{match.date ? match.date.slice(0, 10) : ''}</TableCell>
+                    <TableCell>{match.court || ''}</TableCell>
+                    <TableCell>{match.matchCode || ''}</TableCell>
+                    <TableCell>{match.matchType || ''}</TableCell>
+                    <TableCell>
+                      <b className="block text-left mb-1">Team 1</b>
+                      <ul className="list-disc list-inside text-left pl-2">
+                        {team1.map(p => <li key={p.id}>{p.name} (ID: {p.id})</li>)}
+                      </ul>
+                    </TableCell>
+                    <TableCell>
+                      <b className="block text-left mb-1">Team 2</b>
+                      <ul className="list-disc list-inside text-left pl-2">
+                        {team2.map(p => <li key={p.id}>{p.name} (ID: {p.id})</li>)}
+                      </ul>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant={inputs[match.id]?.winnerTeam === 'team1' ? 'default' : 'outline'}
+                          onClick={() => handleInputChange(match.id, 'winnerTeam', 'team1')}
+                          className="w-full"
+                        >
+                          Team 1
+                        </Button>
+                        <Button
+                          variant={inputs[match.id]?.winnerTeam === 'team2' ? 'default' : 'outline'}
+                          onClick={() => handleInputChange(match.id, 'winnerTeam', 'team2')}
+                          className="w-full"
+                        >
+                          Team 2
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="text"
+                        value={inputs[match.id]?.scoreInput || ''}
+                        onChange={e => handleInputChange(match.id, 'scoreInput', e.target.value)}
+                        placeholder="Score"
+                        className="w-24 text-center"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        onClick={() => handleUpdate(match.id, match)}
+                        disabled={updating[match.id]}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {updating[match.id] ? 'Updating...' : 'Update'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

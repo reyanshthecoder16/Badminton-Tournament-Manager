@@ -89,4 +89,24 @@ router.get('/:matchDayId', async (req, res) => {
   }
 });
 
+// DELETE /api/schedule/:id
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Check if finalized (implement this check in your model/service)
+    const matchDay = await MatchDay.findByPk(id);
+    if (!matchDay) return res.status(404).json({ error: 'Match day not found' });
+    if (matchDay.finalized) return res.status(400).json({ error: 'Cannot delete finalized schedule' });
+
+    // Delete all matches for this match day
+    await Match.destroy({ where: { matchDayId: id } });
+    // Delete the match day itself
+    await matchDay.destroy();
+
+    res.json({ message: 'Schedule deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete schedule' });
+  }
+});
+
 module.exports = router;

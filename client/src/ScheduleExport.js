@@ -1,12 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Button } from './components/ui/button';
+import { Label } from './components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 
 function ScheduleExport({ players }) {
   const [matchDays, setMatchDays] = useState([]);
   const [selectedMatchDay, setSelectedMatchDay] = useState('');
   const [schedule, setSchedule] = useState(null);
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null); // For displaying success/error messages
+
+  // Function to display a temporary message
+  const displayMessage = (msg, type = 'success') => {
+    setMessage({ text: msg, type });
+    setTimeout(() => setMessage(null), 3000); // Clear message after 3 seconds
+  };
 
   // Helper to get player name by ID
   const playerNameById = (id) => {
@@ -20,13 +45,13 @@ function ScheduleExport({ players }) {
     // Defensive: sort matches by id ascending before export
     const sortedMatches = [...court.matches].sort((a, b) => a.id - b.id);
     const doc = new jsPDF();
-    doc.text(`Court ${court.court} Schedule`, 14, 16);
+    doc.text(`Court ${court.court} Schedule - Match Day: ${selectedMatchDay}`, 14, 16);
     const rows = sortedMatches.map(match => [
       match.matchCode,
       match.matchType,
-      (match.team1Names || (match.team1||[]).map(playerNameById)).join(', '),
-      (match.team2Names || (match.team2||[]).map(playerNameById)).join(', '),
-      ''
+      (match.team1Names || (match.team1 || []).map(playerNameById)).join(', '),
+      (match.team2Names || (match.team2 || []).map(playerNameById)).join(', '),
+      match.score || '' // Ensure score is included
     ]);
     autoTable(doc, {
       head: [['Match Code', 'Type', 'Team 1', 'Team 2', 'Score']],
@@ -36,6 +61,7 @@ function ScheduleExport({ players }) {
       headStyles: { fillColor: [70, 202, 255] }
     });
     doc.save(`court_${court.court}_schedule.pdf`);
+    displayMessage(`Schedule for Court ${court.court} downloaded successfully.`, 'success');
   };
 
   useEffect(() => {
@@ -43,11 +69,13 @@ function ScheduleExport({ players }) {
     fetch('/api/schedule/matchdays')
       .then(res => res.json())
       .then(setMatchDays)
-      .catch(() => setError('Failed to load match days'));
+      .catch(() => {
+        setError('Failed to load match days.');
+        displayMessage('Failed to load match days.', 'error');
+      });
   }, []);
 
-  const handleSelect = async (e) => {
-    const matchDayId = e.target.value;
+  const handleSelect = async (matchDayId) => {
     setSelectedMatchDay(matchDayId);
     setError(null);
     setSchedule(null);
@@ -57,120 +85,99 @@ function ScheduleExport({ players }) {
       if (!res.ok) throw new Error('Failed to fetch schedule');
       const data = await res.json();
       setSchedule(data);
+      if (data.length === 0) {
+        setError('No schedule found for the selected match day.');
+        displayMessage('No schedule found for the selected match day.', 'error');
+        return;
+      }
+      displayMessage('Schedule for the selected match day loaded successfully.', 'success');
     } catch (e) {
-      setError('Failed to fetch schedule');
+      setError('Failed to fetch schedule.');
+      displayMessage('Failed to fetch schedule.', 'error');
     }
   };
 
   return (
-    <div className="export-container">
-      <h2>Export/Print Schedule Per Court</h2>
-      <div style={{marginBottom:16}}>
-        <label htmlFor="matchday-select">Select Match Day: </label>
-        <select id="matchday-select" value={selectedMatchDay} onChange={handleSelect}>
-          <option value="">-- Select --</option>
-          {matchDays.map(md => (
-            <option key={md.id} value={md.id}>{md.date}</option>
-          ))}
-        </select>
-        {error && <div style={{color:'red', marginTop:8}}>{error}</div>}
-      </div>
-      {schedule && (
-        <div className="export-schedule">
-          <h3>Schedule Per Court</h3>
-          {schedule.map((court, idx) => {
-            // Defensive: sort matches by id before rendering
-            const sortedMatches = [...court.matches].sort((a, b) => a.id - b.id);
-            return (
-              <div key={court.court || idx} className="court-block">
-                <button className="update-btn" style={{marginBottom:8, float:'right'}} onClick={()=>downloadCourtPDF(court)}>
-                  Download PDF
-                </button>
-                <h4>Court {court.court}</h4>
-                <table className="export-table">
-                  <thead>
-                    <tr>
-                      <th>Match Code</th>
-                      <th>Type</th>
-                      <th>Team 1</th>
-                      <th>Team 2</th>
-                      <th>Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedMatches.map(match => (
-                      <tr key={match.id}>
-                        <td>{match.matchCode}</td>
-                        <td>{match.matchType}</td>
-                        <td>{(match.team1Names || (match.team1||[]).map(pid => playerNameById(pid))).join(', ')}</td>
-                        <td>{(match.team2Names || (match.team2||[]).map(pid => playerNameById(pid))).join(', ')}</td>
-                        <td style={{minWidth:80}}></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
-          <button className="update-btn" style={{marginTop:16}} onClick={()=>window.print()}>Print This Page</button>
-        </div>
-      )}
-      <style>{`
-        .export-container {
-          max-width: 700px;
-          margin: 32px auto;
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-          padding: 32px 24px 24px 24px;
-        }
-        .export-container h2 {
-          text-align: center;
-          margin-bottom: 24px;
-        }
-        .export-schedule {
-          margin-top: 16px;
-        }
-        .court-block {
-          margin-bottom: 32px;
-          background: #f7faff;
-          border-radius: 8px;
-          padding: 16px 12px;
-          box-shadow: 0 1px 4px #e0e0e0;
-        }
-        .court-block h4 {
-          margin-top: 0;
-        }
-        .export-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 8px;
-        }
-        .export-table th, .export-table td {
-          border: 1px solid #b3e6ff;
-          padding: 6px 10px;
-          text-align: center;
-        }
-        .export-table th {
-          background: #e6f7ff;
-        }
-        .update-btn {
-          background: #4caf50;
-          color: #fff;
-          border: none;
-          border-radius: 4px;
-          padding: 8px 20px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .update-btn:disabled {
-          background: #bdbdbd;
-          cursor: not-allowed;
-        }
-      `}</style>
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-3xl">
+      <Card className="shadow-lg rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center mb-6">Export/Print Schedule Per Court</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Message Display */}
+          {message && (
+            <div className={`p-3 mb-4 rounded-md text-center ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {message.text}
+            </div>
+          )}
+
+          <div className="mb-6">
+            <Label htmlFor="matchday-select" className="text-lg font-medium mb-2 block">Select Match Day:</Label>
+            <Select onValueChange={handleSelect} value={selectedMatchDay}>
+              <SelectTrigger id="matchday-select" className="w-full">
+                <SelectValue placeholder="-- Select --" />
+              </SelectTrigger>
+              <SelectContent>
+                {matchDays.map(md => (
+                  <SelectItem key={md.id} value={md.id}>{md.date}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {error && <div className="text-red-500 mt-2 text-sm">{error}</div>}
+          </div>
+          {schedule && (
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold mb-4 text-center">Schedule Per Court</h3>
+              {schedule.map((court, idx) => {
+                // Defensive: sort matches by id before rendering
+                const sortedMatches = [...court.matches].sort((a, b) => a.id - b.id);
+                return (
+                  <Card key={court.court || idx} className="mb-6 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg font-semibold">Court {court.court}</CardTitle>
+                      <Button
+                        onClick={() => downloadCourtPDF(court)}
+                        className="bg-blue-500 hover:bg-blue-600 text-black text-sm px-3 py-1 rounded-md"
+                      >
+                        Download PDF
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <Table className="w-full border border-gray-200 rounded-md">
+                        <TableHeader className="bg-gray-100">
+                          <TableRow>
+                            <TableHead>Match Code</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Team 1</TableHead>
+                            <TableHead>Team 2</TableHead>
+                            <TableHead>Score</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedMatches.map(match => (
+                            <TableRow key={match.id} className="border-b last:border-0 hover:bg-gray-50">
+                              <TableCell className="font-medium">{match.matchCode}</TableCell>
+                              <TableCell>{match.matchType}</TableCell>
+                              <TableCell>{(match.team1Names || (match.team1 || []).map(pid => playerNameById(pid))).join(', ')}</TableCell>
+                              <TableCell>{(match.team2Names || (match.team2 || []).map(pid => playerNameById(pid))).join(', ')}</TableCell>
+                              <TableCell className="min-w-[80px]">{match.score}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <Button onClick={() => window.print()} className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out">
+                Print This Page
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-export default ScheduleExport; 
+export default ScheduleExport;

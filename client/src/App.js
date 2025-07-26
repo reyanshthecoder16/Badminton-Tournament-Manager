@@ -4,6 +4,7 @@ import PlayerPerformance from './PlayerPerformance';
 import AttendanceAndSchedule from './AttendanceAndSchedule';
 import ScheduleExport from './ScheduleExport';
 import FinalizeMatches from './FinalizeMatches';
+import { Button } from './components/ui/button'; // Assuming Shadcn UI components are available
 
 function App() {
   const [screen, setScreen] = useState('results');
@@ -14,43 +15,67 @@ function App() {
     setScreen(target);
     if (target === 'export' && !playersLoaded) {
       // Fetch players for export screen
-      const res = await fetch('/api/players');
-      const data = await res.json();
-      setPlayers(data);
-      setPlayersLoaded(true);
+      try {
+        const res = await fetch('/api/players');
+        const data = await res.json();
+        setPlayers(data);
+        setPlayersLoaded(true);
+      } catch (error) {
+        console.error("Failed to fetch players for export:", error);
+        // Optionally, display a message to the user
+      }
     }
   };
 
   return (
-    <div className="App">
-      <h1>Badminton Tournament Manager</h1>
-      <div style={{textAlign:'center', marginBottom:24}}>
-        <button
-          style={{marginRight:12, padding:'8px 18px', borderRadius:6, border:'1px solid #b3e6ff', background:screen==='results'?'#b3e6ff':'#f0f0f0', fontWeight:'bold', cursor:'pointer'}}
-          onClick={()=>handleNav('results')}
-        >Match Results</button>
-        <button
-          style={{marginRight:12, padding:'8px 18px', borderRadius:6, border:'1px solid #b3e6ff', background:screen==='performance'?'#b3e6ff':'#f0f0f0', fontWeight:'bold', cursor:'pointer'}}
-          onClick={()=>handleNav('performance')}
-        >Player Performance</button>
-        <button
-          style={{marginRight:12, padding:'8px 18px', borderRadius:6, border:'1px solid #b3e6ff', background:screen==='attendance'?'#b3e6ff':'#f0f0f0', fontWeight:'bold', cursor:'pointer'}}
-          onClick={()=>handleNav('attendance')}
-        >Attendance & Schedule</button>
-        <button
-          style={{marginRight:12, padding:'8px 18px', borderRadius:6, border:'1px solid #b3e6ff', background:screen==='finalize'?'#b3e6ff':'#f0f0f0', fontWeight:'bold', cursor:'pointer'}}
-          onClick={()=>handleNav('finalize')}
-        >Finalize Matches</button>
-        <button
-          style={{padding:'8px 18px', borderRadius:6, border:'1px solid #b3e6ff', background:screen==='export'?'#b3e6ff':'#f0f0f0', fontWeight:'bold', cursor:'pointer'}}
-          onClick={()=>handleNav('export')}
-        >Export Schedule</button>
+    <div className="min-h-screen bg-gray-100 font-sans antialiased pb-10">
+      <h1 className="text-4xl font-extrabold text-center py-8 bg-blue-600 text-white shadow-md rounded-b-lg">
+        Badminton Tournament Manager
+      </h1>
+      <div className="flex flex-wrap justify-center gap-3 p-4 mb-8 bg-white shadow-md rounded-lg mx-auto max-w-6xl">
+        <Button
+          onClick={() => handleNav('results')}
+          variant={screen === 'results' ? 'default' : 'outline'}
+          className="px-6 py-3 rounded-lg font-bold transition-all duration-200 ease-in-out"
+        >
+          Match Results
+        </Button>
+        <Button
+          onClick={() => handleNav('performance')}
+          variant={screen === 'performance' ? 'default' : 'outline'}
+          className="px-6 py-3 rounded-lg font-bold transition-all duration-200 ease-in-out"
+        >
+          Player Performance
+        </Button>
+        <Button
+          onClick={() => handleNav('attendance')}
+          variant={screen === 'attendance' ? 'default' : 'outline'}
+          className="px-6 py-3 rounded-lg font-bold transition-all duration-200 ease-in-out"
+        >
+          Attendance & Schedule
+        </Button>
+        <Button
+          onClick={() => handleNav('finalize')}
+          variant={screen === 'finalize' ? 'default' : 'outline'}
+          className="px-6 py-3 rounded-lg font-bold transition-all duration-200 ease-in-out"
+        >
+          Finalize Matches
+        </Button>
+        <Button
+          onClick={() => handleNav('export')}
+          variant={screen === 'export' ? 'default' : 'outline'}
+          className="px-6 py-3 rounded-lg font-bold transition-all duration-200 ease-in-out"
+        >
+          Export Schedule
+        </Button>
       </div>
-      {screen === 'results' ? <MatchResults /> :
-        screen === 'performance' ? <PlayerPerformance /> :
-        screen === 'attendance' ? <AttendanceAndSchedule /> :
-        screen === 'finalize' ? <FinalizeMatches /> :
-        <ScheduleExport players={players} />}
+      <div className="px-4">
+        {screen === 'results' ? <MatchResults /> :
+          screen === 'performance' ? <PlayerPerformance /> :
+            screen === 'attendance' ? <AttendanceAndSchedule /> :
+              screen === 'finalize' ? <FinalizeMatches /> :
+                <ScheduleExport players={players} />}
+      </div>
     </div>
   );
 }
