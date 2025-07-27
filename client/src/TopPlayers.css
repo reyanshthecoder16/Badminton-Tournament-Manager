@@ -1,0 +1,51 @@
+.top-players-container {
+  padding: var(--space-lg);
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.top-players-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.controls {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.controls label {
+  margin-right: 10px;
+}
+
+.players-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.players-list th,
+.players-list td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.players-list th {
+  background-color: #f2f2f2;
+}
+
+.positive {
+  color: green;
+}
+
+.negative {
+  color: red;
+}
+
+.error {
+  color: red;
+  text-align: center;
+}

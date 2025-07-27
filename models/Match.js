@@ -26,6 +26,12 @@ const Match = sequelize.define('Match', {
 Match.belongsToMany(Player, { through: RatingAwards });
 Player.belongsToMany(Match, { through: RatingAwards });
 
+// Explicitly define associations for RatingAwards
+RatingAwards.belongsTo(Match);
+RatingAwards.belongsTo(Player);
+Match.hasMany(RatingAwards);
+Player.hasMany(RatingAwards);
+
 Match.belongsTo(MatchDay);
 MatchDay.hasMany(Match);
 

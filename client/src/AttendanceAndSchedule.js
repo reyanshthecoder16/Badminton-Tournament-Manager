@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { api } from './utils/api';
 
 function AttendanceAndSchedule() {
   const [players, setPlayers] = useState([]);
@@ -9,6 +10,7 @@ function AttendanceAndSchedule() {
   const [schedule, setSchedule] = useState(null);
   const [error, setError] = useState(null);
   const [showExport, setShowExport] = useState(false);
+  const [generatedDates, setGeneratedDates] = useState([]);
 
   useEffect(() => {
     fetchPlayers();
@@ -18,12 +20,7 @@ function AttendanceAndSchedule() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/players', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await res.json();
+      const data = await api.getPlayers();
       setPlayers(data);
       // Default: all present
       const att = {};
@@ -47,14 +44,7 @@ function AttendanceAndSchedule() {
         present: !!attendance[p.id],
         date
       }));
-      await fetch('/api/attendance', {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ attendance: attArr })
-      });
+      await api.saveAttendance({ attendance: attArr });
       alert('Attendance saved!');
     } catch (err) {
       alert('Failed to save attendance');
@@ -63,18 +53,12 @@ function AttendanceAndSchedule() {
   };
 
   const handleGenerateSchedule = async () => {
+    if (generatedDates.includes(date)) return;
     setSchedule(null);
     try {
-      const res = await fetch('/api/schedule', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ date })
-      });
-      const data = await res.json();
+      const data = await api.createSchedule({ date });
       setSchedule(data);
+      setGeneratedDates(prev => [...prev, date]);
     } catch (err) {
       alert('Failed to generate schedule');
     }
@@ -157,9 +141,12 @@ function AttendanceAndSchedule() {
         <button className="update-btn" onClick={handleSaveAttendance} disabled={saving}>
           {saving ? 'Saving...' : 'Save Attendance'}
         </button>
-        <button className="update-btn" style={{marginLeft:12}} onClick={handleGenerateSchedule}>
-          Generate Schedule
+        <button className="update-btn" style={{marginLeft:12}} onClick={handleGenerateSchedule} disabled={generatedDates.includes(date)}>
+          {generatedDates.includes(date) ? 'Already Generated' : 'Generate Schedule'}
         </button>
+        {generatedDates.includes(date) && (
+          <span style={{marginLeft:8, color:'#f39c12'}}>Schedule for this day has already been generated.</span>
+        )}
       </div>
       {schedule && (
         <div className="schedule-section">

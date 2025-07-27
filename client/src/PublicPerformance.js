@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './PublicPerformance.css';
+import { api } from './utils/api';
 
-function PublicPerformance() {
+function PublicPerformance({ setView }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,11 +45,7 @@ function PublicPerformance() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/public/players/performance');
-      if (!res.ok) {
-        throw new Error('Failed to fetch performance data');
-      }
-      const data = await res.json();
+      const data = await api.getPublicPerformance();
       setPlayers(data);
     } catch (err) {
       setError('Failed to fetch player performance');
@@ -60,11 +57,7 @@ function PublicPerformance() {
   const fetchMatchDetails = async (matchId) => {
     setLoadingMatch(true);
     try {
-      const res = await fetch(`/api/public/matches/${matchId}`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch match details');
-      }
-      const data = await res.json();
+      const data = await api.getPublicMatchDetails(matchId);
       setMatchDetails(data);
     } catch (err) {
       console.error('Error fetching match details:', err);
@@ -187,8 +180,9 @@ function PublicPerformance() {
 
   return (
     <div className="public-performance-container">
-      <div className="header-section">
-        <h1>🏸 Badminton Tournament - Player Performance</h1>
+      <div className="header-section" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <h1 style={{margin:0}}>Detailed Player Performance</h1>
+        <button className="home-btn" onClick={()=>setView ? setView('matrix') : window.location.href='/'}>🏠 Home</button>
         <p className="subtitle">Live performance tracking for all players</p>
       </div>
 

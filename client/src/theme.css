@@ -1,0 +1,125 @@
+:root {
+  /* Colors */
+  --primary: #667eea;
+  --primary-dark: #764ba2;
+  --accent: #28a745;
+  --danger: #dc3545;
+  --danger-dark: #c82333;
+  --bg: #f8f9fa;
+  --white: #fff;
+  --gray-light: #e9ecef;
+  --gray: #666;
+  --gray-dark: #333;
+  --shadow: 0 4px 20px rgba(102,126,234,0.08);
+  --radius: 12px;
+  --transition: all 0.2s cubic-bezier(.4,0,.2,1);
+
+  /* Typography */
+  --font-main: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-size-base: 16px;
+  --font-size-lg: 1.25rem;
+  --font-size-sm: 0.95rem;
+  --font-weight-bold: 700;
+  --font-weight-normal: 400;
+
+  /* Spacing */
+  --space-xs: 6px;
+  --space-sm: 12px;
+  --space-md: 20px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+}
+
+body {
+  font-family: var(--font-main);
+  font-size: var(--font-size-base);
+  background: var(--bg);
+  color: var(--gray-dark);
+  margin: 0;
+  padding: 0;
+}
+
+/* Utility classes */
+.flex {
+  display: flex;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+.btn {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 25px;
+  font-weight: var(--font-weight-bold);
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn:hover {
+  background: var(--primary-dark);
+}
+.btn-accent {
+  background: var(--accent);
+}
+.btn-danger {
+  background: var(--danger);
+}
+.btn-danger:hover {
+  background: var(--danger-dark);
+}
+.input {
+  border: 1px solid var(--gray-light);
+  border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-sm);
+  width: 100%;
+  box-sizing: border-box;
+  transition: var(--transition);
+}
+.input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-lg);
+}
+.table th, .table td {
+  border: 1px solid var(--gray-light);
+  padding: var(--space-sm);
+  text-align: left;
+}
+.table th {
+  background: var(--gray-light);
+  font-weight: var(--font-weight-bold);
+}
+.shadow {
+  box-shadow: var(--shadow);
+}
+.radius {
+  border-radius: var(--radius);
+}
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+.mt-lg {
+  margin-top: var(--space-lg);
+}
+.mb-lg {
+  margin-bottom: var(--space-lg);
+}

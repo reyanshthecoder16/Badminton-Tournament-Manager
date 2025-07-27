@@ -3,15 +3,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  padding: var(--space-md);
 }
 
 .login-card {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  padding: 40px;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-lg);
   width: 100%;
   max-width: 400px;
   animation: slideUp 0.6s ease-out;
@@ -34,19 +34,19 @@
 }
 
 .login-header h1 {
-  color: #333;
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: var(--gray-dark);
+  font-size: 1.75rem;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-xs);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .login-header p {
-  color: #666;
-  font-size: 16px;
+  color: var(--gray);
+  font-size: var(--font-size-base);
   margin: 0;
 }
 
@@ -69,18 +69,13 @@
 }
 
 .form-group input {
-  padding: 15px;
-  border: 2px solid #e1e5e9;
-  border-radius: 10px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  background: #f8f9fa;
-}
+  font-size: var(--font-size-base);
+  background: var(--bg);
+} 
 
 .form-group input:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
+  border-color: var(--primary);
+  background: var(--white);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -90,17 +85,19 @@
 }
 
 .login-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  width: 100%;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  border-radius: var(--radius);
+  margin-top: var(--space-sm);
+  color: var(--white);
   border: none;
-  padding: 15px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 10px;
+  transition: var(--transition);
 }
+
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-2px);

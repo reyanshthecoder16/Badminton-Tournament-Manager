@@ -1,6 +1,24 @@
 // API utility functions with authentication
 
-const API_BASE_URL = '/api';
+// Configure API base URL based on environment
+const getApiBaseUrl = () => {
+  // Check if we're in production (built React app)
+  if (process.env.NODE_ENV === 'production') {
+    // Use the configured backend URL for production
+    return 'https://mpf.ankesh.fun:8085/api';
+  }
+  
+  // For development, check if there's a custom API URL set
+  const customApiUrl = process.env.REACT_APP_API_URL;
+  if (customApiUrl) {
+    return `${customApiUrl}/api`;
+  }
+  
+  // Default to relative path for development
+  return '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Get stored token
 const getToken = () => {
@@ -30,6 +48,37 @@ const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   window.location.reload();
+};
+
+// Make non-authenticated API request (for login, public endpoints)
+const publicApiRequest = async (endpoint, options = {}) => {
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+  };
+
+  const config = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Request failed');
+    }
+    
+    return data;
+  } catch (error) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your connection.');
+    }
+    throw error;
+  }
 };
 
 // Make authenticated API request
@@ -86,6 +135,7 @@ const apiRequest = async (endpoint, options = {}) => {
 export const api = {
   // Players
   getPlayers: () => apiRequest('/players'),
+  getPlayerPerformance: () => apiRequest('/players/performance'),
   createPlayer: (playerData) => apiRequest('/players', {
     method: 'POST',
     body: JSON.stringify(playerData),
@@ -100,6 +150,10 @@ export const api = {
 
   // Attendance
   getAttendance: () => apiRequest('/attendance'),
+  saveAttendance: (attendanceData) => apiRequest('/attendance', {
+    method: 'PUT',
+    body: JSON.stringify(attendanceData),
+  }),
   createAttendance: (attendanceData) => apiRequest('/attendance', {
     method: 'POST',
     body: JSON.stringify(attendanceData),
@@ -111,6 +165,8 @@ export const api = {
 
   // Schedule
   getSchedule: () => apiRequest('/schedule'),
+  getMatchDays: () => apiRequest('/schedule/matchdays'),
+  getScheduleByMatchDay: (matchDayId) => apiRequest(`/schedule/${matchDayId}`),
   createSchedule: (scheduleData) => apiRequest('/schedule', {
     method: 'POST',
     body: JSON.stringify(scheduleData),
@@ -122,6 +178,11 @@ export const api = {
 
   // Results
   getResults: () => apiRequest('/results'),
+  getMatches: () => apiRequest('/results/matches'),
+  finalizeMatches: (matchDayData) => apiRequest('/results/finalizeMatches', {
+    method: 'POST',
+    body: JSON.stringify(matchDayData),
+  }),
   createResult: (resultData) => apiRequest('/results', {
     method: 'POST',
     body: JSON.stringify(resultData),
@@ -132,6 +193,10 @@ export const api = {
   }),
 
   // Auth
+  login: (credentials) => publicApiRequest('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  }),
   getProfile: () => apiRequest('/auth/profile'),
   changePassword: (passwordData) => apiRequest('/auth/change-password', {
     method: 'PUT',
@@ -140,6 +205,12 @@ export const api = {
   logout: () => apiRequest('/auth/logout', {
     method: 'POST',
   }),
+
+  // Public endpoints
+  getPublicPerformance: () => publicApiRequest('/public/players/performance'),
+  getPublicMatchDetails: (matchId) => publicApiRequest(`/public/matches/${matchId}`),
+  getPublicMatchDays: () => publicApiRequest('/public/schedule/matchdays'),
+  getTopPlayersByRatingChange: (matchDay) => publicApiRequest(`/public/players/top-by-rating-change?matchDay=${matchDay}`),
 };
 
 export {
@@ -149,4 +220,5 @@ export {
   isAdmin,
   logout,
   apiRequest,
+  publicApiRequest,
 }; 

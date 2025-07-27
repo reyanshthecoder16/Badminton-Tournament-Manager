@@ -27,24 +27,58 @@ function MatchResults() {
   const [sortOrder, setSortOrder] = useState('asc');
   const [changed, setChanged] = useState({}); // Track changed matches
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  // State for match days and filter
+  const [matchDays, setMatchDays] = useState([]);
+  const [selectedMatchDay, setSelectedMatchDay] = useState('');
+  const [finalizedDays, setFinalizedDays] = useState([]);
 
+  // Fetch match days and finalized days on mount
   useEffect(() => {
-    fetchMatches();
+    const fetchMatchDays = async () => {
+      try {
+        const days = await api.getMatchDays();
+        setMatchDays(days);
+        if (days.length > 0) {
+          // Sort by date to ensure latest is selected (assuming date field exists)
+          const sortedDays = [...days].sort((a, b) => new Date(a.date) - new Date(b.date));
+          const latest = sortedDays[sortedDays.length - 1].id;
+          setSelectedMatchDay(latest);
+          console.log('Match days:', days);
+          console.log('Selected latest match day:', latest);
+        }
+      } catch {
+        setError('Failed to load match days');
+      }
+    };
+    fetchMatchDays();
   }, []);
 
-  const fetchMatches = async () => {
+  // Fetch matches when selectedMatchDay changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!selectedMatchDay) return;
+    fetchMatches(selectedMatchDay);
+  }, [selectedMatchDay]);
+
+  // Update finalizedDays when matchDays changes
+  useEffect(() => {
+    if (!matchDays.length) return;
+    const finalized = matchDays.filter(d => d.finalized).map(d => d.id);
+    setFinalizedDays(finalized);
+    console.log('Finalized days:', finalized);
+    console.log('All match days with finalized status:', matchDays.map(d => ({id: d.id, date: d.date, finalized: d.finalized})));
+  }, [matchDays]);
+
+  const fetchMatches = async (matchDayId) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/results/matches', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await res.json();
-      setMatches(data);
+      const data = await api.getMatches();
+      // Filter matches to selected match day (loose equality for type safety, correct field)
+      const filtered = data.filter(m => m.MatchDayId == matchDayId);
+      setMatches(filtered);
       const initialInputs = {};
-      data.forEach(match => {
+      filtered.forEach(match => {
         initialInputs[match.id] = {
           winnerTeam: getWinnerTeam(match),
           scoreInput: match.score || ''
@@ -78,21 +112,20 @@ function MatchResults() {
   };
 
   const handleUpdate = async (matchId, match) => {
+    console.log('handleUpdate called - selectedMatchDay:', selectedMatchDay, 'finalizedDays:', finalizedDays);
+    console.log('Checking if', Number(selectedMatchDay), 'is in finalizedDays:', finalizedDays.includes(Number(selectedMatchDay)));
+    if (finalizedDays.includes(Number(selectedMatchDay))) {
+      alert('This match day is finalized. Updates are not allowed.');
+      return;
+    }
     setUpdating(prev => ({ ...prev, [matchId]: true }));
     const { winnerTeam, scoreInput } = inputs[matchId];
     let winnerIds = [];
     if (winnerTeam === 'team1') winnerIds = (match.team1Players || []).map(p => p.id);
     else if (winnerTeam === 'team2') winnerIds = (match.team2Players || []).map(p => p.id);
     try {
-      await fetch('/api/results', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ matchId, winnerIds, score: scoreInput })
-      });
-      await fetchMatches();
+      await api.createResult({ matchId, winnerIds, score: scoreInput });
+      await fetchMatches(selectedMatchDay);
       alert('Result updated!');
     } catch (err) {
       alert('Failed to update result');
@@ -101,6 +134,11 @@ function MatchResults() {
   };
 
   const handleBulkUpdate = async () => {
+    console.log('handleBulkUpdate called - selectedMatchDay:', selectedMatchDay, 'finalizedDays:', finalizedDays);
+    if (finalizedDays.includes(Number(selectedMatchDay))) {
+      alert('This match day is finalized. Bulk updates are not allowed.');
+      return;
+    }
     setBulkUpdating(true);
     const updates = Object.keys(changed).map(matchId => {
       const match = matches.find(m => m.id === Number(matchId));
@@ -111,25 +149,37 @@ function MatchResults() {
       return { matchId: Number(matchId), winnerIds, score: scoreInput };
     });
     try {
-      await Promise.all(updates.map(update =>
-        fetch('/api/results', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify(update)
-        })
-      ));
-      await fetchMatches();
+      for (const update of updates) {
+        try {
+          await api.createResult(update);
+          await new Promise(res => setTimeout(res, 100)); // 100ms delay, backend limit increased
+        } catch (err) {
+          let backendMsg = '';
+          if (err && err.message) backendMsg = err.message;
+          if (err && err.response && typeof err.response.text === 'function') {
+            try {
+              backendMsg = await err.response.text();
+            } catch {}
+          }
+          console.error('Failed to update result for matchId', update.matchId, backendMsg || err);
+          throw err;
+        }
+      }
+      await fetchMatches(selectedMatchDay);
       alert('All selected results updated!');
     } catch (err) {
-      alert('Failed to update some results');
+      alert('Failed to update some results. See console for details.');
+      console.error('Bulk update error:', err);
     }
     setBulkUpdating(false);
   };
 
   const handleForceBulkUpdate = async () => {
+    console.log('handleForceBulkUpdate called - selectedMatchDay:', selectedMatchDay, 'finalizedDays:', finalizedDays);
+    if (finalizedDays.includes(Number(selectedMatchDay))) {
+      alert('This match day is finalized. Force updates are not allowed.');
+      return;
+    }
     setBulkUpdating(true);
     const updates = matches.map(match => {
       const { winnerTeam, scoreInput } = inputs[match.id];
@@ -139,17 +189,8 @@ function MatchResults() {
       return { matchId: match.id, winnerIds, score: scoreInput };
     });
     try {
-      await Promise.all(updates.map(update =>
-        fetch('/api/results', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify(update)
-        })
-      ));
-      await fetchMatches();
+      await Promise.all(updates.map(update => api.createResult(update)));
+      await fetchMatches(selectedMatchDay);
       alert('All records force updated!');
     } catch (err) {
       alert('Failed to force update some results');
@@ -201,6 +242,18 @@ function MatchResults() {
   return (
     <div className="match-results-container">
       <h2>Update Match Results</h2>
+      <div className="filter-controls" style={{marginBottom:16, display:'flex', alignItems:'center', gap:12, justifyContent:'center'}}>
+        <label htmlFor="matchday-select">Match Date: </label>
+        <select id="matchday-select" value={selectedMatchDay} onChange={e => setSelectedMatchDay(e.target.value)}>
+          <option value="">-- Select --</option>
+          {matchDays.map(md => (
+            <option key={md.id} value={md.id}>{md.date}{md.finalized ? ' (Finalized)' : ''}</option>
+          ))}
+        </select>
+        {finalizedDays.includes(Number(selectedMatchDay)) && (
+          <span style={{color:'#f39c12', fontWeight:'bold'}}>This date is finalized. Results cannot be edited.</span>
+        )}
+      </div>
       <div className="sort-controls">
         <span>Sort by: </span>
         <button className={sortBy==='date' ? 'active' : ''} onClick={() => handleSort('date')}>Date {sortBy==='date' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
@@ -213,7 +266,7 @@ function MatchResults() {
         className="update-btn"
         style={{marginBottom:16, float:'right'}}
         onClick={handleBulkUpdate}
-        disabled={bulkUpdating || Object.keys(changed).length === 0}
+        disabled={bulkUpdating || Object.keys(changed).length === 0 || finalizedDays.includes(Number(selectedMatchDay))}
       >
         {bulkUpdating ? 'Updating All...' : `Update All (${Object.keys(changed).length})`}
       </button>
@@ -221,7 +274,7 @@ function MatchResults() {
         className="update-btn"
         style={{marginBottom:16, float:'right', marginRight:12, background:'#ffb347', color:'#222'}}
         onClick={handleForceBulkUpdate}
-        disabled={bulkUpdating}
+        disabled={bulkUpdating || finalizedDays.includes(Number(selectedMatchDay))}
       >
         {bulkUpdating ? 'Force Updating...' : 'Force Update All'}
       </button>
@@ -243,6 +296,7 @@ function MatchResults() {
           {getSortedMatches().map(match => {
             const team1 = match.team1Players || [];
             const team2 = match.team2Players || [];
+            const isFinalized = finalizedDays.includes(Number(selectedMatchDay));
             return (
               <tr key={match.id}>
                 <td>{match.id}</td>
@@ -267,10 +321,12 @@ function MatchResults() {
                     <button
                       className={inputs[match.id]?.winnerTeam==='team1'?'winner-btn selected':'winner-btn'}
                       onClick={() => handleInputChange(match.id, 'winnerTeam', 'team1')}
+                      disabled={isFinalized}
                     >Team 1</button>
                     <button
                       className={inputs[match.id]?.winnerTeam==='team2'?'winner-btn selected':'winner-btn'}
                       onClick={() => handleInputChange(match.id, 'winnerTeam', 'team2')}
+                      disabled={isFinalized}
                     >Team 2</button>
                   </div>
                 </td>
@@ -281,15 +337,16 @@ function MatchResults() {
                     value={inputs[match.id]?.scoreInput || ''}
                     onChange={e => handleInputChange(match.id, 'scoreInput', e.target.value)}
                     placeholder="Score"
+                    disabled={isFinalized}
                   />
                 </td>
                 <td>
                   <button
                     className="update-btn"
                     onClick={() => handleUpdate(match.id, match)}
-                    disabled={updating[match.id]}
+                    disabled={updating[match.id] || isFinalized}
                   >
-                    {updating[match.id] ? 'Updating...' : 'Update'}
+                    {isFinalized ? 'Finalized' : (updating[match.id] ? 'Updating...' : 'Update')}
                   </button>
                 </td>
               </tr>

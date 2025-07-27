@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import PublicPerformance from './PublicPerformance';
+import TopPlayers from './TopPlayers';
 import Login from './Login';
+import PlayerPerformanceMatrix from './PlayerPerformanceMatrix';
 import './PublicLanding.css';
 
 function PublicLanding() {
-  const [view, setView] = useState('landing'); // 'landing', 'performance', 'login'
+  const [view, setView] = useState('matrix'); // 'matrix'=main, 'performance', 'login', 'admin'
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -30,7 +32,7 @@ function PublicLanding() {
             ← Back to Home
           </button>
         </div>
-        <PublicPerformance />
+        <PublicPerformance setView={setView} />
       </div>
     );
   }
@@ -48,6 +50,21 @@ function PublicLanding() {
     );
   }
 
+  if (view === 'matrix') {
+    return (
+      <div>
+        <div className="public-nav">
+          <button onClick={() => setView('landing')} className="back-btn">
+            ← Back to Home
+          </button>
+        </div>
+        <PlayerPerformanceMatrix view={view} setView={setView} />
+      </div>
+    );
+  }
+
+
+
   if (view === 'admin') {
     // Redirect to the main admin app
     window.location.href = '/admin';
@@ -63,34 +80,33 @@ function PublicLanding() {
             Track performance, view rankings, and manage your badminton tournament
           </p>
           
-          <div className="hero-stats">
-            <div className="stat-card">
-              <div className="stat-number">Live</div>
-              <div className="stat-label">Performance Tracking</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">Real-time</div>
-              <div className="stat-label">Rankings</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">Secure</div>
-              <div className="stat-label">Admin Access</div>
-            </div>
-          </div>
+
         </div>
       </div>
 
       <div className="actions-section">
         <div className="action-cards">
+          <div className="action-card matrix">
+            <div className="card-icon">📈</div>
+             <h3>Leaderboard</h3>
+            <p>Track and compare player ratings over time with visual trends for each match day.</p>
+            <button 
+              onClick={() => setView('matrix')}
+              className="action-btn matrix-btn"
+            >
+              View Leaderboard
+            </button>
+          </div>
+
           <div className="action-card public">
             <div className="card-icon">👥</div>
-            <h3>Public Performance View</h3>
+            <h3>Detailed Player Performance</h3>
             <p>View all player rankings, performance stats, and match history. No login required.</p>
             <button 
               onClick={() => setView('performance')}
               className="action-btn public-btn"
             >
-              View Performance
+              View Details
             </button>
           </div>
 
@@ -105,6 +121,8 @@ function PublicLanding() {
               Admin Login
             </button>
           </div>
+
+
         </div>
       </div>
 
@@ -135,7 +153,7 @@ function PublicLanding() {
       </div>
 
       <footer className="landing-footer">
-        <p>&copy; 2024 Badminton Tournament Manager. All rights reserved.</p>
+        <p>Developed by :- Ankesh Somani</p>
       </footer>
     </div>
   );

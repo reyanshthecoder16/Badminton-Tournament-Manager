@@ -6,7 +6,7 @@ import ScheduleExport from './ScheduleExport';
 import FinalizeMatches from './FinalizeMatches';
 import Login from './Login';
 import PublicLanding from './PublicLanding';
-import { isAuthenticated, getUser, logout } from './utils/api';
+import { isAuthenticated, getUser, logout, api } from './utils/api';
 import './App.css';
 
 function App() {
@@ -37,12 +37,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      await api.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -57,12 +52,7 @@ function App() {
     if (target === 'export' && !playersLoaded) {
       // Fetch players for export screen
       try {
-        const res = await fetch('/api/players', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        const data = await res.json();
+        const data = await api.getPlayers();
         setPlayers(data);
         setPlayersLoaded(true);
       } catch (error) {

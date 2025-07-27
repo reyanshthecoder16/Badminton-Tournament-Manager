@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player');
 const { Match, RatingAwards } = require('../models/Match');
+const { Op, Sequelize } = require('sequelize');
 
 /**
  * @swagger
@@ -238,6 +239,93 @@ router.get('/matches/:matchId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching public match details:', error);
     res.status(500).json({ error: 'Failed to fetch match details' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/public/schedule/matchdays:
+ *   get:
+ *     summary: Get all match days (public access)
+ *     responses:
+ *       200:
+ *         description: A list of match days
+ */
+router.get('/schedule/matchdays', async (req, res) => {
+  try {
+    const matchDays = await Match.findAll({
+      attributes: [
+        [Sequelize.fn('DISTINCT', Sequelize.col('date')), 'match_day'],
+      ],
+      order: [['date', 'DESC']],
+    });
+    res.json(matchDays);
+  } catch (error) {
+    console.error('Error fetching public match days:', error);
+    res.status(500).json({ error: 'Failed to fetch match days' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/public/players/top-by-rating-change:
+ *   get:
+ *     summary: Get top 10 players by rating change for a specific match day
+ *     parameters:
+ *       - in: query
+ *         name: matchDay
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: A list of top 10 players with their rating changes
+ */
+router.get('/players/top-by-rating-change', async (req, res) => {
+  const { matchDay } = req.query;
+
+  if (!matchDay) {
+    return res.status(400).json({ error: 'matchDay query parameter is required' });
+  }
+
+  try {
+    const awards = await RatingAwards.findAll({
+      include: [
+        {
+          model: Match,
+          where: { date: matchDay },
+          attributes: [],
+        },
+        {
+          model: Player,
+          attributes: ['id', 'name'],
+        },
+      ],
+    });
+
+    const playerRatingChanges = {};
+
+    awards.forEach(award => {
+      if (!playerRatingChanges[award.Player.id]) {
+        playerRatingChanges[award.Player.id] = {
+          player_id: award.Player.id,
+          name: award.Player.name,
+          rating_change: 0,
+          new_rating: award.newRating, // Store the latest rating
+        };
+      }
+      playerRatingChanges[award.Player.id].rating_change += (award.newRating - award.oldRating);
+    });
+
+    const sortedPlayers = Object.values(playerRatingChanges)
+      .sort((a, b) => b.rating_change - a.rating_change)
+      .slice(0, 10);
+
+    res.json(sortedPlayers);
+  } catch (error) {
+    console.error('Error fetching top players by rating change:', error);
+    res.status(500).json({ error: 'Failed to fetch top players' });
   }
 });
 
