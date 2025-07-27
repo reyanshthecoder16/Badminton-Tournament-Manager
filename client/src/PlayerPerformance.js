@@ -14,7 +14,11 @@ function PlayerPerformance() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/players/performance');
+      const res = await fetch('/api/players/performance', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       const data = await res.json();
       setPlayers(data);
     } catch (err) {

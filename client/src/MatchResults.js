@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { api } from './utils/api';
 
 function defaultMultiSort(a, b) {
   const dateA = a.date || '';
@@ -35,7 +36,11 @@ function MatchResults() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/results/matches');
+      const res = await fetch('/api/results/matches', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       const data = await res.json();
       setMatches(data);
       const initialInputs = {};
@@ -81,7 +86,10 @@ function MatchResults() {
     try {
       await fetch('/api/results', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({ matchId, winnerIds, score: scoreInput })
       });
       await fetchMatches();
@@ -106,7 +114,10 @@ function MatchResults() {
       await Promise.all(updates.map(update =>
         fetch('/api/results', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
           body: JSON.stringify(update)
         })
       ));
@@ -124,14 +135,17 @@ function MatchResults() {
       const { winnerTeam, scoreInput } = inputs[match.id];
       let winnerIds = [];
       if (winnerTeam === 'team1') winnerIds = (match.team1Players || []).map(p => p.id);
-      else if (winnerTeam === 'team2') winnerIds = (match.team2Players || []).map(p => p.id);
+      if (winnerTeam === 'team2') winnerIds = (match.team2Players || []).map(p => p.id);
       return { matchId: match.id, winnerIds, score: scoreInput };
     });
     try {
       await Promise.all(updates.map(update =>
         fetch('/api/results', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
           body: JSON.stringify(update)
         })
       ));

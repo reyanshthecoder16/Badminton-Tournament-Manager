@@ -40,7 +40,11 @@ function ScheduleExport({ players }) {
 
   useEffect(() => {
     // Fetch all match days for dropdown
-    fetch('/api/schedule/matchdays')
+    fetch('/api/schedule/matchdays', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    })
       .then(res => res.json())
       .then(setMatchDays)
       .catch(() => setError('Failed to load match days'));
@@ -53,7 +57,11 @@ function ScheduleExport({ players }) {
     setSchedule(null);
     if (!matchDayId) return;
     try {
-      const res = await fetch(`/api/schedule/${matchDayId}`);
+      const res = await fetch(`/api/schedule/${matchDayId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       if (!res.ok) throw new Error('Failed to fetch schedule');
       const data = await res.json();
       setSchedule(data);

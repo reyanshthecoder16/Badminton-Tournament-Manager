@@ -2,28 +2,78 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./config/db');
 const Player = require('./models/Player');
+const User = require('./models/User');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const xlsx = require('xlsx');
+const { authenticateToken } = require('./middleware/auth');
 
+const authRoute = require('./routes/auth');
+const publicRoute = require('./routes/public');
 const playersRoute = require('./routes/players');
 const attendanceRoute = require('./routes/attendance');
 const scheduleRoute = require('./routes/schedule');
 const resultsRoute = require('./routes/results');
 
 const app = express();
+
+// Trust proxy for rate limiting (fixes X-Forwarded-For error)
+app.set('trust proxy', 1);
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  credentials: true
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// More strict rate limiting for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', limiter);
+app.use('/api/auth/', authLimiter);
+
 app.use(bodyParser.json());
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'client')));
 
-// Mount routes
-app.use('/api/players', playersRoute);
-app.use('/api/attendance', attendanceRoute);
-app.use('/api/schedule', scheduleRoute);
-app.use('/api/results', resultsRoute);
+// Admin route handler
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client', 'index.html'));
+});
+
+// Mount public routes (no authentication required)
+app.use('/api/public', publicRoute);
+
+// Mount authentication routes (unprotected)
+app.use('/api/auth', authRoute);
+
+// Mount protected routes
+app.use('/api/players', authenticateToken, playersRoute);
+app.use('/api/attendance', authenticateToken, attendanceRoute);
+app.use('/api/schedule', authenticateToken, scheduleRoute);
+app.use('/api/results', authenticateToken, resultsRoute);
 
 // Swagger setup
 const swaggerDefinition = {
@@ -33,7 +83,19 @@ const swaggerDefinition = {
     version: '1.0.0',
     description: 'API documentation for Badminton Scheduler',
   },
-  servers: [{ url: '  http://localhost:3000' }],
+  servers: [{ url: 'http://localhost:3000' }],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
+  security: [{
+    bearerAuth: [],
+  }],
 };
 
 const options = {
@@ -42,6 +104,24 @@ const options = {
 };
 const swaggerSpec = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Create default admin user
+async function createDefaultAdmin() {
+  try {
+    const adminExists = await User.findOne({ where: { username: 'admin' } });
+    if (!adminExists) {
+      await User.create({
+        username: 'admin',
+        email: 'admin@badminton.com',
+        password: 'admin123',
+        role: 'admin'
+      });
+      console.log('Default admin user created: admin/admin123');
+    }
+  } catch (error) {
+    console.error('Error creating default admin:', error);
+  }
+}
 
 // Import sample data from Excel
 async function importSamplePlayers() {
@@ -100,6 +180,7 @@ async function importSamplePlayers() {
 
 // Sync DB and start server
 db.sync({ alter: true }).then(async () => {
+  await createDefaultAdmin();
   await importSamplePlayers();
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

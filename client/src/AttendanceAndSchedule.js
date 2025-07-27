@@ -18,7 +18,11 @@ function AttendanceAndSchedule() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/players');
+      const res = await fetch('/api/players', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       const data = await res.json();
       setPlayers(data);
       // Default: all present
@@ -45,7 +49,10 @@ function AttendanceAndSchedule() {
       }));
       await fetch('/api/attendance', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({ attendance: attArr })
       });
       alert('Attendance saved!');
@@ -60,7 +67,10 @@ function AttendanceAndSchedule() {
     try {
       const res = await fetch('/api/schedule', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({ date })
       });
       const data = await res.json();

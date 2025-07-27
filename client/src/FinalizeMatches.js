@@ -7,7 +7,11 @@ function FinalizeMatches() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/schedule/matchdays')
+    fetch('/api/schedule/matchdays', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    })
       .then(res => res.json())
       .then(setMatchDays)
       .catch(() => setStatus('Failed to load match days'));
@@ -20,7 +24,10 @@ function FinalizeMatches() {
     try {
       const res = await fetch('/api/results/finalizeMatches', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({ matchDayId: selectedMatchDay })
       });
       const data = await res.json();
