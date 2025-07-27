@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -29,7 +31,9 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Rate limiting
@@ -83,7 +87,11 @@ const swaggerDefinition = {
     version: '1.0.0',
     description: 'API documentation for Badminton Scheduler',
   },
-  servers: [{ url: 'http://localhost:3000' }],
+  servers: [
+    { url: 'https://mpf.ankesh.fun:8085', description: 'Production HTTPS' },
+    { url: 'http://mpf.ankesh.fun:8084', description: 'Production HTTP' },
+    { url: 'http://localhost:3001', description: 'Development' }
+  ],
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -108,15 +116,23 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Create default admin user
 async function createDefaultAdmin() {
   try {
-    const adminExists = await User.findOne({ where: { username: 'admin' } });
+    // Get admin credentials from environment variables with fallbacks
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@badminton.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    
+    const adminExists = await User.findOne({ where: { username: adminUsername } });
     if (!adminExists) {
       await User.create({
-        username: 'admin',
-        email: 'admin@badminton.com',
-        password: 'admin123',
+        username: adminUsername,
+        email: adminEmail,
+        password: adminPassword,
         role: 'admin'
       });
-      console.log('Default admin user created: admin/admin123');
+      console.log(`Default admin user created: ${adminUsername}/${adminPassword}`);
+      console.log(`Admin email: ${adminEmail}`);
+    } else {
+      console.log(`Admin user '${adminUsername}' already exists`);
     }
   } catch (error) {
     console.error('Error creating default admin:', error);
@@ -182,6 +198,42 @@ async function importSamplePlayers() {
 db.sync({ alter: true }).then(async () => {
   await createDefaultAdmin();
   await importSamplePlayers();
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  
+  const HTTP_PORT = process.env.HTTP_PORT || 8084;
+  const HTTPS_PORT = process.env.HTTPS_PORT || 8085;
+  const NODE_ENV = process.env.NODE_ENV || 'development';
+  
+  // Start HTTP server
+  const httpServer = http.createServer(app);
+  httpServer.listen(HTTP_PORT, () => {
+    console.log(`🚀 HTTP Server running on port ${HTTP_PORT}`);
+    console.log(`📱 Environment: ${NODE_ENV}`);
+    console.log(`🌐 Client URL: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+  });
+  
+  // Start HTTPS server if SSL certificates are available
+  const sslKeyPath = process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/mpf.ankesh.fun/privkey.pem';
+  const sslCertPath = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/mpf.ankesh.fun/fullchain.pem';
+  
+  if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+    try {
+      const httpsOptions = {
+        key: fs.readFileSync(sslKeyPath),
+        cert: fs.readFileSync(sslCertPath)
+      };
+      
+      const httpsServer = https.createServer(httpsOptions, app);
+      httpsServer.listen(HTTPS_PORT, () => {
+        console.log(`🔒 HTTPS Server running on port ${HTTPS_PORT}`);
+        console.log(`🌍 Production URL: https://mpf.ankesh.fun`);
+      });
+    } catch (error) {
+      console.error('❌ Error starting HTTPS server:', error.message);
+      console.log('⚠️  HTTPS server not started. Running HTTP only.');
+    }
+  } else {
+    console.log('⚠️  SSL certificates not found. Running HTTP only.');
+    console.log(`📁 Expected SSL key path: ${sslKeyPath}`);
+    console.log(`📁 Expected SSL cert path: ${sslCertPath}`);
+  }
 });

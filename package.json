@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "cd client && npm install && npm run build",
+    "build:client": "cd client && npm run build",
+    "install:client": "cd client && npm install",
+    "start:prod": "NODE_ENV=production node index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

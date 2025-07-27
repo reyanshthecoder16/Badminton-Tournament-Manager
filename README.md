@@ -101,6 +101,31 @@ CLIENT_URL=http://localhost:3000
 
 ### 5. Start the Application
 ```bash
+# Development mode
+npm run dev
+
+# Production mode
+npm start
+```
+
+## 🚀 Production Deployment
+
+For production deployment on Digital Ocean with HTTPS support, see the comprehensive [DEPLOYMENT.md](./DEPLOYMENT.md) guide.
+
+### Quick Deployment Steps:
+1. **Server Setup**: Install Node.js, MySQL, Nginx, and SSL certificates
+2. **Application Setup**: Clone repository, install dependencies, build frontend
+3. **Configuration**: Set up environment variables and database
+4. **Reverse Proxy**: Configure Nginx to serve the application
+5. **Process Management**: Use PM2 for application management
+
+### Production URLs:
+- **Main Application**: https://mpf.ankesh.fun
+- **API Documentation**: https://mpf.ankesh.fun/api-docs
+- **Admin Dashboard**: https://mpf.ankesh.fun/admin
+
+### 5. Start the Application
+```bash
 # Start the server
 npm start
 ```
