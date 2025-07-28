@@ -120,6 +120,8 @@ function AttendanceAndSchedule() {
         <thead>
           <tr>
             <th>Name</th>
+            <th>Gender</th>
+            <th>Current Rating</th>
             <th>Present?</th>
           </tr>
         </thead>
@@ -127,6 +129,8 @@ function AttendanceAndSchedule() {
           {players.map(p => (
             <tr key={p.id}>
               <td>{p.name}</td>
+              <td>{p.gender || '-'}</td>
+              <td>{p.currentRating ?? '-'}</td>
               <td>
                 <button
                   className={attendance[p.id] ? 'present-btn selected' : 'present-btn'}

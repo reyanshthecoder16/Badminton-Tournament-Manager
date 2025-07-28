@@ -5,6 +5,92 @@
   font-family: var(--font-main);
 }
 
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  .public-performance-container {
+    padding: 10px;
+  }
+  .header-section h1 {
+    font-size: 1.6rem;
+  }
+  .controls-section {
+    padding: 12px;
+    margin-bottom: 18px;
+  }
+  .home-btn {
+    font-size: 1em;
+    padding: 8px 18px;
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+  .search-box {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .matrix-table, .leaderboard-table, .performance-table, .teams-section {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+  .matrix-table th, .matrix-table td,
+  .leaderboard-table th, .leaderboard-table td,
+  .performance-table th, .performance-table td {
+    font-size: 0.95em;
+    padding: 6px 4px;
+    min-width: 80px;
+  }
+  .teams-section {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .header-section {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-section h1 {
+    font-size: 1.2rem;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+  }
+  .controls-section {
+    padding: 8px;
+    border-radius: 10px;
+  }
+  .home-btn {
+    font-size: 0.95em;
+    padding: 7px 12px;
+    border-radius: 16px;
+  }
+  .matrix-table th, .matrix-table td,
+  .leaderboard-table th, .leaderboard-table td,
+  .performance-table th, .performance-table td {
+    font-size: 0.85em;
+    padding: 4px 2px;
+    min-width: 70px;
+  }
+}
+
+/* Make tables horizontally scrollable on small screens */
+.matrix-table, .leaderboard-table, .performance-table {
+  overflow-x: auto;
+  display: block;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch-friendly buttons */
+.home-btn, .matrix-table button, .leaderboard-table button, .performance-table button {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 1em;
+}
+
+
 .home-btn {
   background: linear-gradient(90deg, #667eea, #764ba2);
   color: #fff;

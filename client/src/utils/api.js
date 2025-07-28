@@ -133,6 +133,13 @@ const apiRequest = async (endpoint, options = {}) => {
 
 // API methods for different endpoints
 export const api = {
+  // Create a new match (backend)
+  createMatch: async (matchData) => {
+    return await publicApiRequest('/public/matches', {
+      method: 'POST',
+      body: JSON.stringify(matchData)
+    });
+  },
   // Players
   getPlayers: () => apiRequest('/players'),
   getPlayerPerformance: () => apiRequest('/players/performance'),

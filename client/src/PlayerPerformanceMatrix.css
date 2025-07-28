@@ -70,9 +70,43 @@
 }
 
 .matrix-scroll {
-  overflow-x: auto;
+  overflow-x: auto !important;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100vw;
+  position: relative;
 }
+
+/* Optional: show scroll hint on mobile */
+.matrix-scroll::after {
+  content: '↔';
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  font-size: 1.1em;
+  color: #bbb;
+  opacity: 0.8;
+  pointer-events: none;
+  display: none;
+}
+@media (max-width: 900px) {
+  .matrix-scroll::after {
+    display: block;
+  }
+}
+
+.matrix-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--white);
+  border-radius: 18px;
+  box-shadow: 0 4px 24px 0 rgba(30,60,90,0.10);
+  font-size: var(--font-size-base);
+  overflow: hidden;
+}
+
 
 .leaderboard-view .sticky-col {
   position: sticky;
@@ -89,20 +123,100 @@
   z-index: 2;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
+  .matrix-scroll {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  .matrix-table {
+    min-width: 600px;
+    font-size: 0.96em;
+  }
   .matrix-table th, .matrix-table td {
-    min-width: 90px;
-    padding: 0.6em 0.5em;
-    font-size: 0.98em;
+    min-width: 80px;
+    padding: 0.6em 0.4em;
+    font-size: 0.96em;
   }
   .leaderboard-view .sticky-col {
-    min-width: 70px;
-    font-size: 0.98em;
+    min-width: 60px;
+    font-size: 0.96em;
   }
   .leaderboard-view .sticky-col + .sticky-col {
-    min-width: 110px;
+    min-width: 90px;
+  }
+  .matrix-nav {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+  .matrix-nav-btn {
+    width: 100%;
+    font-size: 1em;
+    padding: 10px 0;
+    margin: 0 0 6px 0;
   }
 }
+
+@media (max-width: 700px) {
+  .matrix-table th, .matrix-table td {
+    min-width: 70px;
+    padding: 0.5em 0.3em;
+    font-size: 0.93em;
+  }
+  .leaderboard-view .sticky-col {
+    min-width: 50px;
+    font-size: 0.93em;
+  }
+  .leaderboard-view .sticky-col + .sticky-col {
+    min-width: 70px;
+  }
+}
+
+@media (max-width: 480px) {
+  .matrix-container {
+    padding: 10px;
+  }
+  .matrix-app-title {
+    font-size: 1.2em;
+  }
+  .matrix-table {
+    font-size: 0.88em;
+    min-width: 400px;
+  }
+  .matrix-table th, .matrix-table td {
+    min-width: 50px;
+    padding: 0.3em 0.2em;
+    font-size: 0.88em;
+  }
+  .leaderboard-view .sticky-col {
+    min-width: 36px;
+    font-size: 0.88em;
+  }
+  .leaderboard-view .sticky-col + .sticky-col {
+    min-width: 50px;
+  }
+  .matrix-nav {
+    flex-direction: column !important;
+    gap: 6px !important;
+    align-items: stretch !important;
+  }
+  .matrix-nav-btn {
+    width: 100%;
+    font-size: 0.98em;
+    padding: 9px 0;
+    margin: 0 0 6px 0;
+    min-height: 44px;
+  }
+}
+
+/* Touch-friendly buttons */
+.matrix-nav-btn {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 1em;
+}
+
 
 .matrix-table th, .matrix-table td {
   border: 1px solid var(--gray-light);

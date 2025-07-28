@@ -41,6 +41,15 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="login-container">
+      <div className="login-home-btn-wrapper">
+  <a href="/" className="home-btn login-home-btn" aria-label="Go to Home">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'7px',verticalAlign:'middle'}} aria-hidden="true">
+  <path d="M3 9.5L10 3L17 9.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  <path d="M5 8.5V16.5C5 17.0523 5.44772 17.5 6 17.5H14C14.5523 17.5 15 17.0523 15 16.5V8.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+</svg>
+Home
+  </a>
+</div>
       <div className="login-card">
         <div className="login-header">
           <h1>Badminton Tournament Manager</h1>
@@ -91,9 +100,6 @@ const Login = ({ onLogin }) => {
           </button>
         </form>
         
-        <div className="login-footer">
-          <p>Default admin credentials: admin / admin123</p>
-        </div>
       </div>
     </div>
   );

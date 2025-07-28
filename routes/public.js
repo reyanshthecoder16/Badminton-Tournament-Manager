@@ -20,6 +20,29 @@ const { Op, Sequelize } = require('sequelize');
  *                 type: object
  */
 
+// POST /api/public/matches - Create a new match
+router.post('/matches', async (req, res) => {
+  try {
+    const { matchCode, matchType, date, court, team1, team2, MatchDayId } = req.body;
+    if (!matchCode || !matchType || !date || !court || !team1 || !team2) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const match = await Match.create({
+      matchCode,
+      matchType,
+      date,
+      court,
+      team1,
+      team2,
+      MatchDayId
+    });
+    res.status(201).json(match);
+  } catch (error) {
+    console.error('Error creating match:', error);
+    res.status(500).json({ error: 'Failed to create match' });
+  }
+});
+
 // GET /api/public/players/performance - Public access to player performance
 router.get('/players/performance', async (req, res) => {
   try {

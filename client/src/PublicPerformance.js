@@ -94,14 +94,15 @@ function PublicPerformance({ setView }) {
       player.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
+      if (sortBy === 'name') {
+        const aName = (a && a.name ? a.name : '').toLowerCase();
+        const bName = (b && b.name ? b.name : '').toLowerCase();
+        if (aName < bName) return sortOrder === 'asc' ? -1 : 1;
+        if (aName > bName) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      }
       let aVal = a[sortBy];
       let bVal = b[sortBy];
-      
-      if (sortBy === 'name') {
-        aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
-      }
-      
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
       return 0;
@@ -182,8 +183,13 @@ function PublicPerformance({ setView }) {
     <div className="public-performance-container">
       <div className="header-section" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <h1 style={{margin:0}}>Detailed Player Performance</h1>
-        <button className="home-btn" onClick={()=>setView ? setView('matrix') : window.location.href='/'}>🏠 Home</button>
-        <p className="subtitle">Live performance tracking for all players</p>
+        <button className="home-btn" onClick={()=>setView ? setView('matrix') : window.location.href='/'} aria-label="Home">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'7px',verticalAlign:'middle'}} aria-hidden="true">
+    <path d="M3 9.5L10 3L17 9.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5 8.5V16.5C5 17.0523 5.44772 17.5 6 17.5H14C14.5523 17.5 15 17.0523 15 16.5V8.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+  Home
+</button>
       </div>
 
       <div className="controls-section">
