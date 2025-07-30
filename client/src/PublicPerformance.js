@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './PublicPerformance.css';
 import { api } from './utils/api';
 
-function PublicPerformance({ setView }) {
+function PublicPerformance() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -100,11 +100,13 @@ function PublicPerformance({ setView }) {
         if (aName < bName) return sortOrder === 'asc' ? -1 : 1;
         if (aName > bName) return sortOrder === 'asc' ? 1 : -1;
         return 0;
+      } else if (sortBy === 'currentRating') {
+        return sortOrder === 'asc' ? a.currentRating - b.currentRating : b.currentRating - a.currentRating;
+      } else if (sortBy === 'totalPoints') {
+        return sortOrder === 'asc' ? a.totalPoints - b.totalPoints : b.totalPoints - a.totalPoints;
+      } else if (sortBy === 'matchesPlayed') {
+        return sortOrder === 'asc' ? a.matchesPlayed - b.matchesPlayed : b.matchesPlayed - a.matchesPlayed;
       }
-      let aVal = a[sortBy];
-      let bVal = b[sortBy];
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -116,37 +118,26 @@ function PublicPerformance({ setView }) {
   const currentPlayers = filteredAndSortedPlayers.slice(startIndex, endIndex);
 
   const goToPage = (page) => {
-    setCurrentPage(page);
-    // Scroll to top of player cards
-    const playerCards = document.querySelector('.players-grid');
-    if (playerCards) {
-      playerCards.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
   const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      goToPage(currentPage - 1);
-    }
+    setCurrentPage(prev => Math.max(1, prev - 1));
   };
 
   const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      goToPage(currentPage + 1);
-    }
+    setCurrentPage(prev => Math.min(totalPages, prev + 1));
   };
 
   const getPageNumbers = () => {
     const pages = [];
-    const maxVisiblePages = isMobile ? 3 : 5;
+    const maxVisiblePages = 5;
     
     if (totalPages <= maxVisiblePages) {
-      // Show all pages if total is small
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Show pages around current page
       let start = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
       let end = Math.min(totalPages, start + maxVisiblePages - 1);
       
@@ -181,15 +172,8 @@ function PublicPerformance({ setView }) {
 
   return (
     <div className="public-performance-container">
-      <div className="header-section" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <h1 style={{margin:0}}>Detailed Player Performance</h1>
-        <button className="home-btn" onClick={()=>setView ? setView('matrix') : window.location.href='/'} aria-label="Home">
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'7px',verticalAlign:'middle'}} aria-hidden="true">
-    <path d="M3 9.5L10 3L17 9.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 8.5V16.5C5 17.0523 5.44772 17.5 6 17.5H14C14.5523 17.5 15 17.0523 15 16.5V8.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-  Home
-</button>
+      <div className="header-section">
+        <h1>Detailed Player Performance</h1>
       </div>
 
       <div className="controls-section">
@@ -303,7 +287,7 @@ function PublicPerformance({ setView }) {
                     ))}
                     {player.matches.length > 5 && (
                       <div className="more-matches">
-                        ... and {player.matches.length - 5} more matches
+                        <span>... and {player.matches.length - 5} more matches</span>
                       </div>
                     )}
                   </div>
@@ -311,11 +295,9 @@ function PublicPerformance({ setView }) {
               </div>
             )}
 
-            {player.lastRatingUpdatedOn && (
-              <div className="last-updated">
-                Last updated: {new Date(player.lastRatingUpdatedOn).toLocaleDateString()}
-              </div>
-            )}
+            <div className="last-updated">
+              <small>Last updated: {new Date(player.lastRatingUpdatedOn).toLocaleDateString()}</small>
+            </div>
           </div>
         ))}
       </div>
@@ -324,20 +306,19 @@ function PublicPerformance({ setView }) {
       {totalPages > 1 && (
         <div className="pagination-container">
           <div className="pagination-info">
-            <span>Page {currentPage} of {totalPages}</span>
+            Page {currentPage} of {totalPages}
           </div>
-          
           <div className="pagination-controls">
             <button 
-              className="pagination-btn prev-btn"
+              className="pagination-btn"
               onClick={goToPreviousPage}
               disabled={currentPage === 1}
             >
-              {isMobile ? '‹' : 'Previous'}
+              ← Previous
             </button>
             
             <div className="page-numbers">
-              {getPageNumbers().map((page) => (
+              {getPageNumbers().map(page => (
                 <button
                   key={page}
                   className={`page-btn ${page === currentPage ? 'active' : ''}`}
@@ -349,19 +330,13 @@ function PublicPerformance({ setView }) {
             </div>
             
             <button 
-              className="pagination-btn next-btn"
+              className="pagination-btn"
               onClick={goToNextPage}
               disabled={currentPage === totalPages}
             >
-              {isMobile ? '›' : 'Next'}
+              Next →
             </button>
           </div>
-        </div>
-      )}
-
-      {filteredAndSortedPlayers.length === 0 && (
-        <div className="no-results">
-          <p>No players found matching your search.</p>
         </div>
       )}
 
@@ -373,7 +348,6 @@ function PublicPerformance({ setView }) {
               <h3>Match Details</h3>
               <button className="close-btn" onClick={closeMatchDetails}>×</button>
             </div>
-            
             <div className="modal-content">
               {loadingMatch ? (
                 <div className="loading-spinner"></div>
@@ -392,25 +366,19 @@ function PublicPerformance({ setView }) {
                     </div>
                     <div className="info-row">
                       <span className="label">Court:</span>
-                      <span className="value">Court {matchDetails.court}</span>
+                      <span className="value">{matchDetails.court}</span>
                     </div>
                     <div className="info-row">
-                      <span className="label">Type:</span>
+                      <span className="label">Match Type:</span>
                       <span className="value">{matchDetails.matchType}</span>
                     </div>
-                    {matchDetails.score && (
-                      <div className="info-row">
-                        <span className="label">Score:</span>
-                        <span className="value score">{matchDetails.score}</span>
-                      </div>
-                    )}
                   </div>
 
                   <div className="teams-section">
-                    <div className="team team1">
+                    <div className="team">
                       <h4>Team 1</h4>
                       <div className="players-list">
-                        {matchDetails.team1Players?.map((player, index) => (
+                        {matchDetails.team1Players?.map(player => (
                           <div key={player.id} className="player-item">
                             <span className="player-name">{player.name}</span>
                             <span className="player-rating">({player.currentRating})</span>
@@ -423,10 +391,10 @@ function PublicPerformance({ setView }) {
                       <span>VS</span>
                     </div>
 
-                    <div className="team team2">
+                    <div className="team">
                       <h4>Team 2</h4>
                       <div className="players-list">
-                        {matchDetails.team2Players?.map((player, index) => (
+                        {matchDetails.team2Players?.map(player => (
                           <div key={player.id} className="player-item">
                             <span className="player-name">{player.name}</span>
                             <span className="player-rating">({player.currentRating})</span>
@@ -438,14 +406,16 @@ function PublicPerformance({ setView }) {
 
                   {matchDetails.winner && (
                     <div className="winner-section">
-                      <h4>🏆 Winner</h4>
+                      <h4>Winner</h4>
                       <div className="winner-team">
                         {matchDetails.winner === 'team1' ? 'Team 1' : 'Team 2'}
                       </div>
                     </div>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <div className="error-message">No match details available</div>
+              )}
             </div>
           </div>
         </div>

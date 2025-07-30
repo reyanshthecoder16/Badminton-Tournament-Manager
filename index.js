@@ -88,8 +88,8 @@ const swaggerDefinition = {
     description: 'API documentation for Badminton Scheduler',
   },
   servers: [
-    { url: 'https://mpf.ankesh.fun:8085', description: 'Production HTTPS' },
-    { url: 'http://mpf.ankesh.fun:8084', description: 'Production HTTP' },
+    { url: 'https://your-production-domain.com:8085', description: 'Production HTTPS' },
+    { url: 'http://your-production-domain.com:8084', description: 'Production HTTP' },
     { url: 'http://localhost:3001', description: 'Development' }
   ],
   components: {
@@ -212,8 +212,8 @@ db.sync({ alter: true }).then(async () => {
   });
   
   // Start HTTPS server if SSL certificates are available
-  const sslKeyPath = process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/mpf.ankesh.fun/privkey.pem';
-  const sslCertPath = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/mpf.ankesh.fun/fullchain.pem';
+  const sslKeyPath = process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/your-domain.com/privkey.pem';
+  const sslCertPath = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/your-domain.com/fullchain.pem';
   
   if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
     try {
@@ -225,7 +225,7 @@ db.sync({ alter: true }).then(async () => {
       const httpsServer = https.createServer(httpsOptions, app);
       httpsServer.listen(HTTPS_PORT, () => {
         console.log(`🔒 HTTPS Server running on port ${HTTPS_PORT}`);
-        console.log(`🌍 Production URL: https://mpf.ankesh.fun`);
+        console.log(`🌍 Production URL: https://your-production-domain.com`);
       });
     } catch (error) {
       console.error('❌ Error starting HTTPS server:', error.message);

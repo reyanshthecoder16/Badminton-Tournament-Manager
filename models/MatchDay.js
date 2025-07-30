@@ -7,6 +7,11 @@ const MatchDay = sequelize.define('MatchDay', {
     allowNull: false,
     unique: true,
   },
+  finalized: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
 });
 
 module.exports = MatchDay;

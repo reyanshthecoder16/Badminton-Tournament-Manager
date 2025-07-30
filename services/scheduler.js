@@ -134,8 +134,30 @@ async function finalizeMatches(matchDayId) {
       playerRatings[award.PlayerId] += award.Rating;
     }
 
-    // Update player ratings and lastRatingUpdatedOn
+    // Apply -10 penalty for absentees
+    const absentees = await Attendance.findAll({ where: { MatchDayId: matchDayId, present: false } });
     const now = new Date();
+    let penalizedPlayers = [];
+    // Get the MatchDay date for correct award attribution
+    const matchDayObj = await MatchDay.findByPk(matchDayId);
+    const matchDayDate = matchDayObj ? matchDayObj.date : null;
+    for (const absent of absentees) {
+      const player = await Player.findByPk(absent.PlayerId);
+      if (player) {
+        await player.update({ currentRating: player.currentRating - 10, lastRatingUpdatedOn: now });
+        // Create a RatingAwards entry for the absence penalty
+        await RatingAwards.create({
+          Rating: -10,
+          PlayerId: player.id,
+          MatchId: null, // Not linked to a match
+          date: matchDayDate // custom field for frontend grouping (if schema allows)
+        });
+        penalizedPlayers.push(player.id);
+        console.log(`Penalty: -10 for absent player ${player.id}`);
+      }
+    }
+
+    // Update player ratings and lastRatingUpdatedOn for match deltas
     for (const [playerId, totalDelta] of Object.entries(playerRatings)) {
       const player = await Player.findByPk(playerId);
       if (player) {
@@ -144,7 +166,10 @@ async function finalizeMatches(matchDayId) {
       }
     }
 
-    return { message: 'Match ratings finalized', updatedPlayers: Object.keys(playerRatings).length };
+    // Mark MatchDay as finalized
+    await MatchDay.update({ finalized: true }, { where: { id: matchDayId } });
+
+    return { message: 'Match ratings finalized, absentees penalized', penalizedPlayers, updatedPlayers: Object.keys(playerRatings).length };
   } catch (error) {
     console.error('finalizeMatches error:', error);
     throw error;

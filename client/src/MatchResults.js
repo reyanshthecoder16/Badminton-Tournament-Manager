@@ -18,27 +18,10 @@ function defaultMultiSort(a, b) {
   return 0;
 }
 
-
 function MatchResults() {
   const [players, setPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(true);
   const [playersError, setPlayersError] = useState(null);
-
-  useEffect(() => {
-    async function fetchPlayers() {
-      setPlayersLoading(true);
-      setPlayersError(null);
-      try {
-        const data = await api.getPlayers();
-        setPlayers(data);
-      } catch (err) {
-        setPlayersError('Failed to fetch players');
-      }
-      setPlayersLoading(false);
-    }
-    fetchPlayers();
-  }, []);
-
   const [matches, setMatches] = useState([]);
   const [manualMatches, setManualMatches] = useState([]); // persistent frontend-only matches
   const [validationError, setValidationError] = useState('');
@@ -67,7 +50,6 @@ function MatchResults() {
     date: '',
     court: '',
   });
-
 
   // Load manual matches from localStorage on mount
   useEffect(() => {

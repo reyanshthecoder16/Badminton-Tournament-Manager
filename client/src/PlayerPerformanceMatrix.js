@@ -2,31 +2,40 @@ import React, { useEffect, useState } from 'react';
 import './PlayerPerformanceMatrix.css';
 import { api } from './utils/api';
 
-function PlayerPerformanceMatrix({ view, setView }) {
+// Accept reloadRef or onReloaded prop to allow parent to force a refetch
+function PlayerPerformanceMatrix({ reloadRef, onReloaded }) {
   const [players, setPlayers] = useState([]);
   const [dates, setDates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError('');
-      try {
-        const data = await api.getPublicPerformance();
-        // Collect all unique dates from all matches
-        const allDates = Array.from(new Set(
-          data.flatMap(p => p.matches.map(m => m.date && m.date.slice(0, 10)))
-        )).filter(Boolean).sort();
-        setDates(allDates);
-        setPlayers(data);
-      } catch (err) {
-        setError('Failed to load player performance');
-      }
-      setLoading(false);
+  // Refetch logic
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await api.getPublicPerformance();
+      // Collect all unique dates from all matches
+      const allDates = Array.from(new Set(
+        data.flatMap(p => p.matches.map(m => m.date && m.date.slice(0, 10)))
+      )).filter(Boolean).sort();
+      setDates(allDates);
+      setPlayers(data);
+      // DEBUG: Output all player ratings received from backend
+      console.log('DEBUG: Player ratings from backend:', data.map(p => ({ name: p.name, currentRating: p.currentRating })));
+      if (typeof onReloaded === 'function') onReloaded();
+    } catch (err) {
+      setError('Failed to load player performance');
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  // Expose reload method via ref
+  React.useImperativeHandle(reloadRef, () => ({ reload: fetchData }), [fetchData]);
 
   // Helper: get rating for player at a given date
   function getRatingOnDate(player, date) {
@@ -49,11 +58,6 @@ function PlayerPerformanceMatrix({ view, setView }) {
   }
 
   // Helper: get trend for player at a given date
-  // Use parent view and setView for SPA navigation
-  const selectedTab = (view === 'matrix') ? 'leaderboard' : (view === 'performance' ? 'detailed' : (view === 'admin' ? 'admin' : ''));
-  // setView comes from props
-  // Remove local useState
-
   function getTrend(player, date, prevDate) {
     const ratingNow = getRatingOnDate(player, date);
     const ratingPrev = prevDate ? getRatingOnDate(player, prevDate) : null;
@@ -71,8 +75,8 @@ function PlayerPerformanceMatrix({ view, setView }) {
   const allPlayers = players.map(p => ({...p}));
   const playerCount = allPlayers.length;
 
-  // Build all date columns: include only 'Initial' as the first column, then match dates
-  const allDateCols = ['Initial', ...dates];
+  // Build all date columns: include only 'Initial' as the first column, then match dates, then 'Current Rating' as the last column
+  const allDateCols = ['Initial', ...dates, 'Current Rating'];
 
   // For each date, get player ratings as of that date, then sort by rating desc
   function getRatingsForDate(date) {
@@ -80,6 +84,8 @@ function PlayerPerformanceMatrix({ view, setView }) {
       let rating;
       if (date === 'Initial') {
         rating = player.initialRating;
+      } else if (date === 'Current Rating') {
+        rating = player.currentRating;
       } else {
         rating = getRatingOnDate(player, date);
         if (rating === null) rating = player.initialRating;
@@ -133,11 +139,6 @@ function PlayerPerformanceMatrix({ view, setView }) {
       <div className="matrix-header-app">
         <h1 className="matrix-app-title">Badminton Tournament Manager</h1>
       </div>
-      <div className="matrix-nav" style={{display:'flex',gap:16,marginBottom:24}}>
-        <button className={`matrix-nav-btn${selectedTab==='leaderboard' ? ' selected' : ''}`} onClick={()=>setView('matrix')}>Leaderboard</button>
-        <button className={`matrix-nav-btn${selectedTab==='admin' ? ' selected' : ''}`} onClick={()=>setView('admin')}>Admin Page</button>
-        <button className={`matrix-nav-btn${selectedTab==='detailed' ? ' selected' : ''}`} onClick={()=>setView('performance')}>Detailed Player Performance</button>
-      </div>
       <h2>Player Performance Leaderboard</h2>
       <div className="matrix-scroll">
         <table className="matrix-table leaderboard-view">
@@ -145,7 +146,7 @@ function PlayerPerformanceMatrix({ view, setView }) {
             <tr>
               <th className="sticky-col">Rank</th>
               {allDateCols.map(date => (
-                <th key={date}>{date === 'Initial' ? 'Initial Rating' : date}</th>
+                <th key={date}>{date === 'Initial' ? 'Initial Rating' : (date === 'Current Rating' ? 'Current Rating' : date)}</th>
               ))}
             </tr>
           </thead>

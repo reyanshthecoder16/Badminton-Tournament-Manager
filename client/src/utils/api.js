@@ -1,24 +1,38 @@
 // API utility functions with authentication
 
-// Configure API base URL based on environment
+// Configure API base URL based on environment variables
 const getApiBaseUrl = () => {
-  // Check if we're in production (built React app)
-  if (process.env.NODE_ENV === 'production') {
-    // Use the configured backend URL for production
-    return 'https://mpf.ankesh.fun:8085/api';
+  // Get base URL and endpoint from environment variables
+  const baseUrl = process.env.REACT_APP_API_BASE_URL;
+  const apiEndpoint = process.env.REACT_APP_API_ENDPOINT || '/api';
+  
+  if (!baseUrl) {
+    console.warn('REACT_APP_API_BASE_URL not set, using fallback');
+    // Fallback URLs from environment variables
+    if (process.env.NODE_ENV === 'production') {
+      const fallbackUrl = process.env.REACT_APP_FALLBACK_PROD_URL || 'https://your-production-domain.com:8085';
+      const fallbackEndpoint = process.env.REACT_APP_FALLBACK_PROD_ENDPOINT || '/api';
+      return `${fallbackUrl}${fallbackEndpoint}`;
+    }
+    const fallbackUrl = process.env.REACT_APP_FALLBACK_DEV_URL || 'http://localhost:8085';
+    const fallbackEndpoint = process.env.REACT_APP_FALLBACK_DEV_ENDPOINT || '/api';
+    return `${fallbackUrl}${fallbackEndpoint}`;
   }
   
-  // For development, check if there's a custom API URL set
-  const customApiUrl = process.env.REACT_APP_API_URL;
-  if (customApiUrl) {
-    return `${customApiUrl}/api`;
-  }
-  
-  // Default to relative path for development
-  return '/api';
+  // Combine base URL with configurable endpoint
+  return `${baseUrl}${apiEndpoint}`;
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+// Log the API URL being used (only in development)
+if (process.env.NODE_ENV === 'development') {
+  console.log('API Base URL:', API_BASE_URL);
+  console.log('Environment:', process.env.REACT_APP_ENVIRONMENT || 'development');
+  console.log('API Endpoint:', process.env.REACT_APP_API_ENDPOINT || '/api');
+  console.log('Fallback Dev URL:', process.env.REACT_APP_FALLBACK_DEV_URL || 'http://localhost:8085');
+  console.log('Fallback Prod URL:', process.env.REACT_APP_FALLBACK_PROD_URL || 'https://your-production-domain.com:8085');
+}
 
 // Get stored token
 const getToken = () => {
@@ -157,6 +171,7 @@ export const api = {
 
   // Attendance
   getAttendance: () => apiRequest('/attendance'),
+  getAttendanceByDate: (date) => apiRequest(`/attendance/${date}`),
   saveAttendance: (attendanceData) => apiRequest('/attendance', {
     method: 'PUT',
     body: JSON.stringify(attendanceData),

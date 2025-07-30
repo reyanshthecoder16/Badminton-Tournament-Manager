@@ -120,9 +120,9 @@ For production deployment on Digital Ocean with HTTPS support, see the comprehen
 5. **Process Management**: Use PM2 for application management
 
 ### Production URLs:
-- **Main Application**: https://mpf.ankesh.fun
-- **API Documentation**: https://mpf.ankesh.fun/api-docs
-- **Admin Dashboard**: https://mpf.ankesh.fun/admin
+- **Main Application**:
+- **API Documentation**: 
+- **Admin Dashboard**:
 
 ### 5. Start the Application
 ```bash

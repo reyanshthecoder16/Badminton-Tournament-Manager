@@ -3,3 +3,8 @@ node_modules
 client/node_modules
 API_CONFIGURATION.md
 build.zip
+src/router-migration-plan.md
+.env.local
+.env.development
+.env.production
+*.md

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './utils/api';
 
-function FinalizeMatches() {
+// Accept onFinalize prop to trigger external refresh
+function FinalizeMatches({ onFinalize }) {
   const [matchDays, setMatchDays] = useState([]);
   const [selectedMatchDay, setSelectedMatchDay] = useState('');
   const [status, setStatus] = useState(null);
@@ -19,14 +20,40 @@ function FinalizeMatches() {
     setLoading(true);
     setStatus(null);
     try {
+      // First finalize matches as before
       const data = await api.finalizeMatches({ matchDayId: selectedMatchDay });
-      setStatus('Success: ' + (data.message || 'Matches finalized.'));
+      // Find the date string for the selected match day ID
+      const matchDayObj = matchDays.find(md => md.id === selectedMatchDay);
+      const matchDayDate = matchDayObj ? matchDayObj.date : selectedMatchDay;
+      // Then fetch attendance for the day using the date string
+      const attendanceData = await api.getAttendanceByDate(matchDayDate);
+      // attendanceData: [{ playerId, present, date }]
+      const absentPlayers = attendanceData.filter(a => !a.present).map(a => a.playerId);
+      let penalized = [];
+      // Penalize each absent player
+      for (const playerId of absentPlayers) {
+        try {
+          // Fetch player data
+          const player = await api.getPlayers().then(players => players.find(p => p.id === playerId));
+          if (player) {
+            const newRating = (player.currentRating || player.initialRating || 0) - 10;
+            await api.updatePlayer(playerId, { ...player, currentRating: newRating });
+            penalized.push(player.name || playerId);
+          }
+        } catch (err) { /* continue */ }
+      }
+      setStatus('Success: ' + (data.message || 'Matches finalized.') + (penalized.length ? ` | -10 points: ${penalized.join(', ')}` : ''));
       setFinalizedDays(prev => [...prev, selectedMatchDay]);
+      // If a parent provided onFinalize, call it to trigger leaderboard refetch
+      if (typeof onFinalize === 'function') {
+        onFinalize();
+      }
     } catch (e) {
       setStatus('Error: ' + (e.message || 'Failed to finalize matches.'));
     }
     setLoading(false);
   };
+
 
   return (
     <div className="finalize-container">

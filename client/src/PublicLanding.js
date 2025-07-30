@@ -6,7 +6,7 @@ import PlayerPerformanceMatrix from './PlayerPerformanceMatrix';
 import './PublicLanding.css';
 
 function PublicLanding() {
-  const [view, setView] = useState('matrix'); // 'matrix'=main, 'performance', 'login', 'admin'
+  const [view, setView] = useState('landing'); // 'landing', 'matrix', 'performance', 'login', 'admin'
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -24,14 +24,13 @@ function PublicLanding() {
     setView('landing');
   };
 
+  const goBack = () => {
+    setView('landing');
+  };
+
   if (view === 'performance') {
     return (
       <div>
-        <div className="public-nav">
-          <button onClick={() => setView('landing')} className="back-btn">
-            ← Back to Home
-          </button>
-        </div>
         <PublicPerformance setView={setView} />
       </div>
     );
@@ -41,7 +40,7 @@ function PublicLanding() {
     return (
       <div>
         <div className="public-nav">
-          <button onClick={() => setView('landing')} className="back-btn">
+          <button className="nav-back-btn" onClick={goBack}>
             ← Back to Home
           </button>
         </div>
@@ -54,7 +53,7 @@ function PublicLanding() {
     return (
       <div>
         <div className="public-nav">
-          <button onClick={() => setView('landing')} className="back-btn">
+          <button className="nav-back-btn" onClick={goBack}>
             ← Back to Home
           </button>
         </div>
@@ -62,8 +61,6 @@ function PublicLanding() {
       </div>
     );
   }
-
-
 
   if (view === 'admin') {
     // Redirect to the main admin app
@@ -73,22 +70,31 @@ function PublicLanding() {
 
   return (
     <div className="public-landing">
+      {/* Admin Link in Top Right */}
+      <div className="admin-link-container">
+        <button 
+          className="admin-link-btn"
+          onClick={() => setView('login')}
+          title="Admin Login"
+        >
+          🔐 Admin
+        </button>
+      </div>
+
       <div className="hero-section">
         <div className="hero-content">
           <h1>🏸 Badminton Tournament Manager</h1>
           <p className="hero-subtitle">
             Track performance, view rankings, and manage your badminton tournament
           </p>
-          
-
         </div>
       </div>
 
       <div className="actions-section">
         <div className="action-cards">
           <div className="action-card matrix">
-            <div className="card-icon">📈</div>
-             <h3>Leaderboard</h3>
+            <div className="card-icon">📊</div>
+            <h3>Leaderboard</h3>
             <p>Track and compare player ratings over time with visual trends for each match day.</p>
             <button 
               onClick={() => setView('matrix')}
@@ -109,20 +115,6 @@ function PublicLanding() {
               View Details
             </button>
           </div>
-
-          <div className="action-card admin">
-            <div className="card-icon">🔐</div>
-            <h3>Admin Dashboard</h3>
-            <p>Manage players, schedule matches, record results, and update ratings. Admin access required.</p>
-            <button 
-              onClick={() => setView('login')}
-              className="action-btn admin-btn"
-            >
-              Admin Login
-            </button>
-          </div>
-
-
         </div>
       </div>
 
