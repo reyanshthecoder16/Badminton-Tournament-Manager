@@ -58,14 +58,64 @@ router.post('/', async (req, res) => {
   res.json(result);
 });
 
-// POST /api/results/finalizeMatches
-router.post('/finalizeMatches', async (req, res) => {
+// PUT /api/results/:id - Update individual match result
+router.put('/:id', async (req, res) => {
   try {
-    const { matchDayId } = req.body;
-    const result = await finalizeMatches(matchDayId);
-    res.json(result);
+    const { recordResult } = require('../services/scheduler');
+    const matchId = req.params.id;
+    const updateData = req.body;
+    console.log('Updating match:', matchId, 'with data:', updateData);
+
+    // Find the match
+    const match = await require('../models/Match').Match.findByPk(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Prepare winnerIds and score for recordResult
+    let winnerIds = [];
+    if (updateData.winnerTeam) {
+      if (updateData.winnerTeam === 'team1') {
+        winnerIds = updateData.team1Players && updateData.team1Players.length > 0 ? updateData.team1Players : match.team1;
+      } else if (updateData.winnerTeam === 'team2') {
+        winnerIds = updateData.team2Players && updateData.team2Players.length > 0 ? updateData.team2Players : match.team2;
+      }
+    } else if (match.winnerIds) {
+      winnerIds = match.winnerIds;
+    }
+    const score = updateData.score || match.score;
+
+    // Update teams if provided
+    if (updateData.team1Players && Array.isArray(updateData.team1Players) && updateData.team1Players.length > 0) {
+      match.team1 = updateData.team1Players;
+    }
+    if (updateData.team2Players && Array.isArray(updateData.team2Players) && updateData.team2Players.length > 0) {
+      match.team2 = updateData.team2Players;
+    }
+    if (updateData.score) {
+      match.score = updateData.score;
+    }
+    if (updateData.winnerTeam) {
+      if (updateData.winnerTeam === 'team1') {
+        match.winnerIds = match.team1;
+        match.loserIds = match.team2;
+      } else if (updateData.winnerTeam === 'team2') {
+        match.winnerIds = match.team2;
+        match.loserIds = match.team1;
+      }
+    }
+    await match.save();
+
+    // Call recordResult to update/create RatingAwards
+    if (winnerIds && winnerIds.length > 0) {
+      await recordResult(matchId, winnerIds, score);
+    }
+
+    // Return the updated match
+    const updatedMatch = await require('../models/Match').Match.findByPk(matchId);
+    res.json(updatedMatch);
   } catch (error) {
-    console.error('Error finalizing matches:', error);
+    console.error('Error updating match:', error);
     res.status(500).json({ error: error.message });
   }
 });

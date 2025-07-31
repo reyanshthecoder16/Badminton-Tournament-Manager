@@ -74,11 +74,17 @@ router.get('/:matchDayId', async (req, res) => {
           id: match.id,
           matchCode: match.matchCode,
           matchType: match.matchType,
+          date: match.date,
+          court: match.court,
           team1: match.team1,
           team2: match.team2,
+          team1Players: team1Players,
+          team2Players: team2Players,
           team1Names: team1Players.map(p => p.name),
           team2Names: team2Players.map(p => p.name),
-          score: match.score || ''
+          score: match.score || '',
+          winnerIds: match.winnerIds,
+          loserIds: match.loserIds
         };
       }));
       return { court, matches: formattedMatches };

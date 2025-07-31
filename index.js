@@ -141,63 +141,123 @@ async function createDefaultAdmin() {
 
 // Import sample data from Excel
 async function importSamplePlayers() {
-  const excelPath = path.join(__dirname, 'MBPL Season 1.0.xlsx');
-  if (!fs.existsSync(excelPath)) return;
-  const workbook = xlsx.readFile(excelPath);
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-
-  // Manually set the headers you want to use
-  const headers = [
-    'Rank', 'Latest Rating Points', 'Player Name', 'Initial Rating', 'Current Rating', 'Joining Date',
-    'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'
+  // Try different possible filenames
+  const possibleFilenames = [
+    'MBPL Season 1.0.xlsx',
+    'MBPLSeason1.0.xlsx',
+    'MBPL Season 1.0.xls',
+    'MBPLSeason1.0.xls'
   ];
-
-  // Read the data, skipping the first row (header)
-  const rows = xlsx.utils.sheet_to_json(sheet, { header: headers, range: 1, defval: '' });
-
-  const players = [];
-  for (const row of rows) {
-    console.log("row is:-"+ row);
-    const name = row['Player Name']?.toString().trim();
-    const initialRating = Number(row['Initial Rating']);
-    const currentRating = Number(row['Current Rating']);
-    let joiningDate = row['Joining Date'];
-    console.log("joiningDate is:-"+ joiningDate);
-    // Parse joining date in DD-MMM-YY format (e.g., 12-Jul-25)
-    if (typeof joiningDate === 'string' && joiningDate.match(/^\d{1,2}-[A-Za-z]{3}-\d{2}$/)) {
-      const [day, mon, year] = joiningDate.split('-');
-      const monthMap = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
-      joiningDate = `20${year}-${monthMap[mon]}-${day.padStart(2, '0')}`;
-    } else if (joiningDate instanceof Date) {
-      joiningDate = joiningDate.toISOString().slice(0, 10);
-    }
-   console.log("name is:-"+ name + " initialRating is:-" + 
-    initialRating + " currentRating is:-" + currentRating +
-     " joiningDate is:-" + joiningDate);
-     console.log(isNaN(initialRating), isNaN(currentRating), isNaN(joiningDate));
-    if (name && !isNaN(initialRating) && !isNaN(currentRating) && joiningDate) {
-      players.push({ name, initialRating, currentRating, joiningDate });
-      console.log('Loaded player:', { name, initialRating, currentRating, joiningDate });
-    } else {
-      console.log('Skipped row:', row);
+  
+  let excelPath = null;
+  for (const filename of possibleFilenames) {
+    const path = require('path').join(__dirname, filename);
+    if (fs.existsSync(path)) {
+      excelPath = path;
+      console.log(`✅ Found Excel file: ${filename}`);
+      break;
     }
   }
-  const count = await Player.count();
-  if (players.length && count === 0) {
-    await Player.bulkCreate(players);
-    console.log('Sample players imported from Excel');
-  } else if (!players.length) {
-    console.log('No valid players found in Excel.');
-  } else {
-    console.log('Players already exist in DB, skipping import.');
+  
+  if (!excelPath) {
+    console.log('❌ No Excel file found. Expected one of:', possibleFilenames);
+    console.log('📁 Current directory files:', fs.readdirSync(__dirname).filter(f => f.endsWith('.xlsx') || f.endsWith('.xls')));
+    return;
+  }
+
+  try {
+    const workbook = xlsx.readFile(excelPath);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    
+    console.log(`📊 Reading sheet: ${sheetName}`);
+
+    // Manually set the headers you want to use
+    const headers = [
+      'Rank', 'Latest Rating Points', 'Player Name', 'Initial Rating', 'Current Rating', 'Joining Date',
+      'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'
+    ];
+
+    // Read the data, skipping the first row (header)
+    const rows = xlsx.utils.sheet_to_json(sheet, { header: headers, range: 1, defval: '' });
+    console.log(`📈 Found ${rows.length} rows in Excel file`);
+
+    const players = [];
+    for (const row of rows) {
+      const name = row['Player Name']?.toString().trim();
+      const initialRating = Number(row['Initial Rating']);
+      const currentRating = Number(row['Current Rating']);
+      let joiningDate = row['Joining Date'];
+      
+      // Parse joining date in DD-MMM-YY format (e.g., 12-Jul-25)
+      if (typeof joiningDate === 'string' && joiningDate.match(/^\d{1,2}-[A-Za-z]{3}-\d{2}$/)) {
+        const [day, mon, year] = joiningDate.split('-');
+        const monthMap = { 
+          Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', 
+          Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' 
+        };
+        joiningDate = `20${year}-${monthMap[mon]}-${day.padStart(2, '0')}`;
+      } else if (joiningDate instanceof Date) {
+        joiningDate = joiningDate.toISOString().slice(0, 10);
+      } else if (typeof joiningDate === 'string' && joiningDate.includes('/')) {
+        // Handle other date formats
+        const date = new Date(joiningDate);
+        if (!isNaN(date.getTime())) {
+          joiningDate = date.toISOString().slice(0, 10);
+        }
+      }
+      
+      // Validate the data
+      if (name && !isNaN(initialRating) && !isNaN(currentRating) && joiningDate) {
+        players.push({ name, initialRating, currentRating, joiningDate });
+        console.log('✅ Loaded player:', { name, initialRating, currentRating, joiningDate });
+      } else {
+        console.log('❌ Skipped invalid row:', { 
+          name, 
+          initialRating, 
+          currentRating, 
+          joiningDate,
+          isValid: !!(name && !isNaN(initialRating) && !isNaN(currentRating) && joiningDate)
+        });
+      }
+    }
+    
+    console.log(`📊 Processed ${players.length} valid players out of ${rows.length} rows`);
+    
+    const count = await Player.count();
+    if (players.length > 0 && count === 0) {
+      await Player.bulkCreate(players);
+      console.log(`✅ Successfully imported ${players.length} players from Excel`);
+    } else if (players.length === 0) {
+      console.log('❌ No valid players found in Excel file');
+    } else {
+      console.log(`⏭️  Players already exist in DB (${count} found), skipping import`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error importing players from Excel:', error.message);
+    console.error('Stack trace:', error.stack);
   }
 }
 
 // Sync DB and start server
 db.sync({ alter: true }).then(async () => {
-  await createDefaultAdmin();
-  await importSamplePlayers();
+  console.log('🗄️  Database synchronized successfully');
+  
+  try {
+    console.log('👤 Creating default admin user...');
+    await createDefaultAdmin();
+    console.log('✅ Default admin user created/verified');
+  } catch (error) {
+    console.error('❌ Error creating default admin:', error.message);
+  }
+  
+  try {
+    console.log('📊 Importing sample players from Excel...');
+    await importSamplePlayers();
+  } catch (error) {
+    console.error('❌ Error importing players:', error.message);
+  }
   
   const HTTP_PORT = process.env.HTTP_PORT || 8084;
   const HTTPS_PORT = process.env.HTTPS_PORT || 8085;
@@ -236,4 +296,7 @@ db.sync({ alter: true }).then(async () => {
     console.log(`📁 Expected SSL key path: ${sslKeyPath}`);
     console.log(`📁 Expected SSL cert path: ${sslCertPath}`);
   }
+}).catch(error => {
+  console.error('❌ Database synchronization failed:', error.message);
+  process.exit(1);
 });
