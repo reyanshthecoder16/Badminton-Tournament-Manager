@@ -40,6 +40,8 @@ function MatchResults() {
   // New: modal and localTeams state
   const [editModal, setEditModal] = useState({ matchId: null, team: null });
   const [localTeams, setLocalTeams] = useState({});
+  // Dual-team modal state
+  const [dualTeamState, setDualTeamState] = useState({ team1: [], team2: [] });
   // Manual match modal and state
   const [addMatchModal, setAddMatchModal] = useState(false);
   const [newMatch, setNewMatch] = useState({
@@ -213,38 +215,72 @@ function MatchResults() {
 
   const handleUpdate = async (matchId, match) => {
     setUpdating(prev => ({ ...prev, [matchId]: true }));
+    setValidationError('');
     try {
-      // Only send the fields that need to be updated
-      const updateData = {
-        ...inputs[matchId]
-      };
-      
-      // Add team data only if it exists
-      if (localTeams[matchId]?.team1 && localTeams[matchId].team1.length > 0) {
-        updateData.team1Players = localTeams[matchId].team1;
+      const team1Players = localTeams[matchId]?.team1 || (match.team1Players || match.team1 || []).map(p => p.id || p);
+      const team2Players = localTeams[matchId]?.team2 || (match.team2Players || match.team2 || []).map(p => p.id || p);
+      // Figure out winnerTeam if set in inputs or match
+      let winnerTeam = undefined;
+      if (inputs[matchId]?.winnerTeam) {
+        winnerTeam = inputs[matchId].winnerTeam;
+      } else if (match.winnerIds) {
+        if (JSON.stringify(match.winnerIds) === JSON.stringify(team1Players)) winnerTeam = 'team1';
+        else if (JSON.stringify(match.winnerIds) === JSON.stringify(team2Players)) winnerTeam = 'team2';
       }
-      if (localTeams[matchId]?.team2 && localTeams[matchId].team2.length > 0) {
-        updateData.team2Players = localTeams[matchId].team2;
+      // Score
+      const score = inputs[matchId]?.scoreInput !== undefined ? inputs[matchId].scoreInput : (match.score || '');
+      // Validate
+      if (team1Players.some(id => team2Players.includes(id))) {
+        setValidationError('A player cannot be in both teams.');
+        setUpdating(prev => ({ ...prev, [matchId]: false }));
+        return;
       }
-      
-      // Rename scoreInput to score for backend
-      if (updateData.scoreInput !== undefined) {
-        updateData.score = updateData.scoreInput;
-        delete updateData.scoreInput;
-      }
-      
-      await api.updateResult(matchId, updateData);
-      
-      setChanged(prev => ({ ...prev, [matchId]: false }));
-      setInputs(prev => ({ ...prev, [matchId]: {} }));
-      setUpdating(prev => ({ ...prev, [matchId]: false }));
-      
-      // Refresh matches
+      // Send update
+      await api.updateResult(matchId, {
+        team1Players,
+        team2Players,
+        winnerTeam,
+        score
+      });
       await fetchMatches(selectedMatchDay);
-    } catch (error) {
-      console.error('Error updating match:', error);
-      setUpdating(prev => ({ ...prev, [matchId]: false }));
+      setChanged(prev => ({ ...prev, [matchId]: false }));
+      setLocalTeams(prev => ({ ...prev, [matchId]: undefined }));
+      setInputs(prev => ({ ...prev, [matchId]: {} }));
+    } catch (err) {
+      setValidationError(err.message || 'Update failed');
     }
+    setUpdating(prev => ({ ...prev, [matchId]: false }));
+  };
+
+  const handleDualTeamEdit = (match) => {
+    setEditModal({ matchId: match.id, team: 'both' });
+    setDualTeamState({
+      team1: localTeams[match.id]?.team1 || (match.team1Players || match.team1 || []).map(p => p.id || p),
+      team2: localTeams[match.id]?.team2 || (match.team2Players || match.team2 || []).map(p => p.id || p)
+    });
+  };
+
+  const handleDualTeamSave = (match) => {
+    const team1Size = match.team1Players?.length || match.team1?.length || 0;
+    const team2Size = match.team2Players?.length || match.team2?.length || 0;
+    if (dualTeamState.team1.length !== team1Size || dualTeamState.team2.length !== team2Size) {
+      setValidationError('Each team must have the correct number of players.');
+      return;
+    }
+    if (dualTeamState.team1.some(id => dualTeamState.team2.includes(id))) {
+      setValidationError('A player cannot be in both teams.');
+      return;
+    }
+    setValidationError('');
+    setLocalTeams(prev => ({
+      ...prev,
+      [match.id]: {
+        team1: dualTeamState.team1,
+        team2: dualTeamState.team2
+      }
+    }));
+    setChanged(prev => ({ ...prev, [match.id]: true }));
+    setEditModal({ matchId: null, team: null });
   };
 
   const handleBulkUpdate = async () => {
@@ -442,30 +478,13 @@ function MatchResults() {
             const currentTeam1Ids = localTeams[match.id]?.team1 || team1.map(p => p.id || p);
             const currentTeam2Ids = localTeams[match.id]?.team2 || team2.map(p => p.id || p);
             
-            // Get the selected match day data for fallback date
-            const selectedMatchDayData = matchDays.find(md => md.id == selectedMatchDay);
-            
-            // Modal handlers
-            const handleTeamEdit = (team) => setEditModal({ matchId: match.id, team });
-            const handleTeamSave = (team, ids) => {
-              setLocalTeams(prev => ({
-                ...prev,
-                [match.id]: {
-                  ...prev[match.id],
-                  [team]: ids
-                }
-              }));
-              setChanged(prev => ({ ...prev, [match.id]: true }));
-              setEditModal({ matchId: null, team: null });
-            };
-            
             return (
               <tr key={match.id}>
                 <td>{match.id}</td>
-                <td>{(match.date ? match.date.slice(0, 10) : selectedMatchDayData?.date) || ''}</td>
-                <td>{match.court || ''}</td>
-                <td>{match.matchCode || ''}</td>
-                <td>{match.matchType || ''}</td>
+                <td>{match.date}</td>
+                <td>{match.court}</td>
+                <td>{match.matchCode}</td>
+                <td>{match.matchType}</td>
                 <td>
                   <b>Team 1</b>
                   <ul style={{margin:0,paddingLeft:16}}>
@@ -474,19 +493,36 @@ function MatchResults() {
                     ))}
                   </ul>
                   {!isFinalized && (
-                    <button className="update-btn" style={{marginTop:4, fontSize:'0.92em'}} onClick={() => handleTeamEdit('team1')}>Edit</button>
+                    <button className="update-btn" style={{marginTop:4, fontSize:'0.92em'}} onClick={() => handleDualTeamEdit(match)}>Edit</button>
                   )}
-                  {(editModal.matchId === match.id && editModal.team === 'team1') && (
+                  {(editModal.matchId === match.id && editModal.team === 'both') && (
                     <div className="modal-bg" onClick={()=>setEditModal({ matchId: null, team: null })}>
                       <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <PlayerSelector
-                          players={players}
-                          selected={currentTeam1Ids}
-                          onChange={ids => handleTeamSave('team1', ids)}
-                          max={team1.length}
-                          label="Select Team 1 Players"
-                        />
-                        <button className="update-btn" onClick={()=>setEditModal({ matchId: null, team: null })}>Cancel</button>
+                        <div style={{display:'flex',gap:24}}>
+                          <div style={{flex:1}}>
+                            <PlayerSelector
+                              players={players}
+                              selected={dualTeamState.team1}
+                              onChange={ids => setDualTeamState(s => ({ ...s, team1: ids }))}
+                              max={team1.length}
+                              label="Select Team 1 Players"
+                            />
+                          </div>
+                          <div style={{flex:1}}>
+                            <PlayerSelector
+                              players={players}
+                              selected={dualTeamState.team2}
+                              onChange={ids => setDualTeamState(s => ({ ...s, team2: ids }))}
+                              max={team2.length}
+                              label="Select Team 2 Players"
+                            />
+                          </div>
+                        </div>
+                        {validationError && <div style={{color:'red',marginTop:8}}>{validationError}</div>}
+                        <div style={{marginTop:16, display:'flex',gap:8}}>
+                          <button className="update-btn" onClick={()=>handleDualTeamSave(match)}>Save</button>
+                          <button className="update-btn" onClick={()=>setEditModal({ matchId: null, team: null })}>Cancel</button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -499,25 +535,42 @@ function MatchResults() {
                     ))}
                   </ul>
                   {!isFinalized && (
-                    <button className="update-btn" style={{marginTop:4, fontSize:'0.92em'}} onClick={() => handleTeamEdit('team2')}>Edit</button>
+                    <button className="update-btn" style={{marginTop:4, fontSize:'0.92em'}} onClick={() => handleDualTeamEdit(match)}>Edit</button>
                   )}
-                  {(editModal.matchId === match.id && editModal.team === 'team2') && (
+                  {(editModal.matchId === match.id && editModal.team === 'both') && (
                     <div className="modal-bg" onClick={()=>setEditModal({ matchId: null, team: null })}>
                       <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <PlayerSelector
-                          players={players}
-                          selected={currentTeam2Ids}
-                          onChange={ids => handleTeamSave('team2', ids)}
-                          max={team2.length}
-                          label="Select Team 2 Players"
-                        />
-                        <button className="update-btn" onClick={()=>setEditModal({ matchId: null, team: null })}>Cancel</button>
+                        <div style={{display:'flex',gap:24}}>
+                          <div style={{flex:1}}>
+                            <PlayerSelector
+                              players={players}
+                              selected={dualTeamState.team1}
+                              onChange={ids => setDualTeamState(s => ({ ...s, team1: ids }))}
+                              max={team1.length}
+                              label="Select Team 1 Players"
+                            />
+                          </div>
+                          <div style={{flex:1}}>
+                            <PlayerSelector
+                              players={players}
+                              selected={dualTeamState.team2}
+                              onChange={ids => setDualTeamState(s => ({ ...s, team2: ids }))}
+                              max={team2.length}
+                              label="Select Team 2 Players"
+                            />
+                          </div>
+                        </div>
+                        {validationError && <div style={{color:'red',marginTop:8}}>{validationError}</div>}
+                        <div style={{marginTop:16, display:'flex',gap:8}}>
+                          <button className="update-btn" onClick={()=>handleDualTeamSave(match)}>Save</button>
+                          <button className="update-btn" onClick={()=>setEditModal({ matchId: null, team: null })}>Cancel</button>
+                        </div>
                       </div>
                     </div>
                   )}
                 </td>
                 <td>
-                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  <div style={{display:'flex',gap:8}}>
                     <button
                       className={
                         currentWinner === 'team1'

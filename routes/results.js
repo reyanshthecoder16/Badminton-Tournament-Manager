@@ -62,28 +62,23 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { recordResult } = require('../services/scheduler');
+    const { Match, RatingAwards } = require('../models/Match');
     const matchId = req.params.id;
     const updateData = req.body;
     console.log('Updating match:', matchId, 'with data:', updateData);
 
     // Find the match
-    const match = await require('../models/Match').Match.findByPk(matchId);
+    const match = await Match.findByPk(matchId);
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
 
-    // Prepare winnerIds and score for recordResult
-    let winnerIds = [];
-    if (updateData.winnerTeam) {
-      if (updateData.winnerTeam === 'team1') {
-        winnerIds = updateData.team1Players && updateData.team1Players.length > 0 ? updateData.team1Players : match.team1;
-      } else if (updateData.winnerTeam === 'team2') {
-        winnerIds = updateData.team2Players && updateData.team2Players.length > 0 ? updateData.team2Players : match.team2;
-      }
-    } else if (match.winnerIds) {
-      winnerIds = match.winnerIds;
-    }
-    const score = updateData.score || match.score;
+    // Detect if teams have changed
+    const oldTeam1 = match.team1 || [];
+    const oldTeam2 = match.team2 || [];
+    const newTeam1 = updateData.team1Players || oldTeam1;
+    const newTeam2 = updateData.team2Players || oldTeam2;
+    const teamsChanged = JSON.stringify(oldTeam1) !== JSON.stringify(newTeam1) || JSON.stringify(oldTeam2) !== JSON.stringify(newTeam2);
 
     // Update teams if provided
     if (updateData.team1Players && Array.isArray(updateData.team1Players) && updateData.team1Players.length > 0) {
@@ -95,6 +90,7 @@ router.put('/:id', async (req, res) => {
     if (updateData.score) {
       match.score = updateData.score;
     }
+    // Winner/loser recalculation
     if (updateData.winnerTeam) {
       if (updateData.winnerTeam === 'team1') {
         match.winnerIds = match.team1;
@@ -106,13 +102,35 @@ router.put('/:id', async (req, res) => {
     }
     await match.save();
 
-    // Call recordResult to update/create RatingAwards
-    if (winnerIds && winnerIds.length > 0) {
+    // If teams changed, delete old RatingAwards and create new ones for new players
+    if (teamsChanged) {
+      await RatingAwards.destroy({ where: { MatchId: matchId } });
+      // Create new RatingAwards for all players in both teams
+      for (const pid of [...newTeam1, ...newTeam2]) {
+        await RatingAwards.create({ MatchId: matchId, PlayerId: pid, Rating: 0 });
+      }
+    }
+
+    // Prepare winnerIds for rating calculation
+    let winnerIds = [];
+    if (updateData.winnerTeam) {
+      if (updateData.winnerTeam === 'team1') {
+        winnerIds = newTeam1;
+      } else if (updateData.winnerTeam === 'team2') {
+        winnerIds = newTeam2;
+      }
+    } else if (match.winnerIds) {
+      winnerIds = match.winnerIds;
+    }
+    const score = updateData.score || match.score;
+
+    // If match has winner and score, recalculate ratings
+    if (winnerIds && winnerIds.length > 0 && score) {
       await recordResult(matchId, winnerIds, score);
     }
 
     // Return the updated match
-    const updatedMatch = await require('../models/Match').Match.findByPk(matchId);
+    const updatedMatch = await Match.findByPk(matchId);
     res.json(updatedMatch);
   } catch (error) {
     console.error('Error updating match:', error);
