@@ -77,6 +77,10 @@
   position: relative;
 }
 
+.matrix-table .rating-up { color:#219653 !important; font-weight:600; }
+.matrix-table .rating-down { color:#e74c3c !important; font-weight:600; }
+.matrix-table .rating-absent, .matrix-table .rating-same { color:#888 !important; }
+
 /* Optional: show scroll hint on mobile */
 .matrix-scroll::after {
   content: '↔';

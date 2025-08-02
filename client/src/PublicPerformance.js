@@ -302,6 +302,7 @@ function PublicPerformance() {
         ))}
       </div>
 
+
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="pagination-container">

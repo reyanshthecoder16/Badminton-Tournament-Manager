@@ -1,6 +1,7 @@
 const { Match, RatingAwards } = require('../models/Match');
 const Player = require('../models/Player');
 const MatchDay = require('../models/MatchDay');
+const PlayerRatingSnapshot = require('../models/PlayerRatingSnapshot');
 const Attendance = require('../models/Attendance');
 
 async function generateSchedule(date = new Date()) {
@@ -141,19 +142,32 @@ async function finalizeMatches(matchDayId) {
     // Get the MatchDay date for correct award attribution
     const matchDayObj = await MatchDay.findByPk(matchDayId);
     const matchDayDate = matchDayObj ? matchDayObj.date : null;
-    for (const absent of absentees) {
-      const player = await Player.findByPk(absent.PlayerId);
-      if (player) {
-        await player.update({ currentRating: player.currentRating - 10, lastRatingUpdatedOn: now });
-        // Create a RatingAwards entry for the absence penalty
-        await RatingAwards.create({
-          Rating: -10,
-          PlayerId: player.id,
-          MatchId: null, // Not linked to a match
-          date: matchDayDate // custom field for frontend grouping (if schema allows)
-        });
-        penalizedPlayers.push(player.id);
-        console.log(`Penalty: -10 for absent player ${player.id}`);
+
+    if (absentees.length) {
+      // Create a synthetic match representing absences so MatchId is non-null
+      const absenceMatch = await Match.create({
+        matchCode: 'ABS',
+        matchType: 'absence',
+        date: matchDayDate,
+        court: null,
+        team1: [],
+        team2: [],
+        MatchDayId: matchDayId,
+      });
+
+      for (const absent of absentees) {
+        const player = await Player.findByPk(absent.PlayerId);
+        if (player) {
+          await player.update({ currentRating: player.currentRating - 10, lastRatingUpdatedOn: now });
+          await RatingAwards.create({
+            Rating: -10,
+            PlayerId: player.id,
+            MatchId: absenceMatch.id,
+            date: matchDayDate,
+          });
+          penalizedPlayers.push(player.id);
+          console.log(`Penalty: -10 for absent player ${player.id}`);
+        }
       }
     }
 
@@ -163,6 +177,22 @@ async function finalizeMatches(matchDayId) {
       if (player) {
         await player.update({ currentRating: player.currentRating + totalDelta, lastRatingUpdatedOn: now });
         console.log(`Updated currentRating for player ${playerId}: ${player.currentRating} (${totalDelta > 0 ? '+' : ''}${totalDelta}), lastRatingUpdatedOn: ${now}`);
+      }
+    }
+
+    // Persist rating snapshots for all affected players (including absentees)
+    const affectedPlayerIds = new Set([
+      ...Object.keys(playerRatings).map(id=>parseInt(id,10)),
+      ...penalizedPlayers
+    ]);
+    for (const pid of affectedPlayerIds) {
+      const pl = await Player.findByPk(pid);
+      if (pl) {
+        await PlayerRatingSnapshot.upsert({
+          playerId: pid,
+          matchDayId: matchDayId,
+          rating: pl.currentRating,
+        });
       }
     }
 

@@ -14,11 +14,11 @@ function PlayerPerformanceMatrix({ reloadRef, onReloaded }) {
     setLoading(true);
     setError('');
     try {
-      const data = await api.getPublicPerformance();
-      // Collect all unique dates from all matches
+      const data = await api.getPublicSnapshots();
+      // Collect all unique dates from snapshots
       const allDates = Array.from(new Set(
-        data.flatMap(p => p.matches.map(m => m.date && m.date.slice(0, 10)))
-      )).filter(Boolean).sort();
+        data.flatMap(p => p.snapshots.map(s => s.date))
+      )).sort((a, b) => new Date(b) - new Date(a));
       setDates(allDates);
       setPlayers(data);
       // DEBUG: Output all player ratings received from backend
@@ -39,34 +39,11 @@ function PlayerPerformanceMatrix({ reloadRef, onReloaded }) {
 
   // Helper: get rating for player at a given date
   function getRatingOnDate(player, date) {
-    // Find the match played on this date
-    const match = player.matches.find(m => m.date && m.date.slice(0, 10) === date);
-    if (match) {
-      // Assume rating after this match is initialRating + sum(points up to and including this match)
-      let rating = player.initialRating;
-      const sortedMatches = player.matches.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-      for (const m of sortedMatches) {
-        if (m.date && m.date.slice(0, 10) <= date) {
-          rating += m.points;
-        }
-        if (m.date && m.date.slice(0, 10) === date) break;
-      }
-      return rating;
-    }
-    // If no match, return null
-    return null;
+    const snap = player.snapshots.find(s => s.date === date);
+    return snap ? snap.rating : null;
   }
 
-  // Helper: get trend for player at a given date
-  function getTrend(player, date, prevDate) {
-    const ratingNow = getRatingOnDate(player, date);
-    const ratingPrev = prevDate ? getRatingOnDate(player, prevDate) : null;
-    if (ratingNow == null) return 'none';
-    if (ratingPrev == null) return 'none';
-    if (ratingNow > ratingPrev) return 'up';
-    if (ratingNow < ratingPrev) return 'down';
-    return 'same';
-  }
+  
 
   if (loading) return <div className="matrix-loading">Loading...</div>;
   if (error) return <div className="matrix-error">{error}</div>;
@@ -75,99 +52,56 @@ function PlayerPerformanceMatrix({ reloadRef, onReloaded }) {
   const allPlayers = players.map(p => ({...p}));
   const playerCount = allPlayers.length;
 
-  // Build all date columns: include only 'Initial' as the first column, then match dates, then 'Current Rating' as the last column
-  const allDateCols = ['Initial', ...dates, 'Current Rating'];
+  // Columns: Rank, Name, Current Rating, Dates..., Initial Rating
+  const dateCols = dates; // already most recent left
 
-  // For each date, get player ratings as of that date, then sort by rating desc
-  function getRatingsForDate(date) {
-    return allPlayers.map(player => {
-      let rating;
-      if (date === 'Initial') {
-        rating = player.initialRating;
-      } else if (date === 'Current Rating') {
-        rating = player.currentRating;
-      } else {
-        rating = getRatingOnDate(player, date);
-        if (rating === null) rating = player.initialRating;
-      }
-      return { ...player, rating };
-    }).sort((a, b) => b.rating - a.rating);
-  }
 
-  // For each date, build a ranking map: rank (0-based) -> player
-  const rankingsByDate = {};
-  allDateCols.forEach(date => {
-    rankingsByDate[date] = getRatingsForDate(date);
-  });
 
-  // For coloring consistently: assign each player a color index based on their id sorted alphabetically
-  const playerIdToColorIdx = (() => {
-    const sorted = [...allPlayers].sort((a, b) => a.name.localeCompare(b.name));
-    const map = {};
-    sorted.forEach((p, idx) => { map[p.id] = idx % 12; });
-    return map;
-  })();
-
-  // For each rank (row), build the row: rank, player name (initial), then for each date, the player at that rank
-  const rows = [];
-  // If there are no match dates, do not render rows
-  if (allDateCols.length > 0) {
-    for (let rank = 0; rank < playerCount; rank++) {
-      // For Rank and Name columns, use the player's info from the first date's ranking
-      const firstDate = allDateCols[0];
-      const playerInfo = rankingsByDate[firstDate]?.[rank];
-      rows.push({
-        rank: rank + 1,
-        player: playerInfo,
-        cells: allDateCols.map((date, colIdx) => {
-          if (date === 'Initial') {
-            // Use player info from 'Initial' ranking
-            const initialPlayer = rankingsByDate['Initial']?.[rank];
-            return initialPlayer ? initialPlayer : null;
-          } else {
-            const playerAtRank = rankingsByDate[date]?.[rank];
-            if (!playerAtRank) return null;
-            return playerAtRank;
-          }
-        })
-      });
-    }
-  }
+  const sortedPlayers = [...players].sort((a, b) => b.currentRating - a.currentRating);
 
   return (
     <div className="matrix-container">
-      <div className="matrix-header-app">
-        <h1 className="matrix-app-title">Badminton Tournament Manager</h1>
-      </div>
       <h2>Player Performance Leaderboard</h2>
       <div className="matrix-scroll">
         <table className="matrix-table leaderboard-view">
           <thead>
             <tr>
-              <th className="sticky-col">Rank</th>
-              {allDateCols.map(date => (
-                <th key={date}>{date === 'Initial' ? 'Initial Rating' : (date === 'Current Rating' ? 'Current Rating' : date)}</th>
+              <th>Rank</th>
+              <th>Player Name</th>
+              <th>Current Rating</th>
+              {dateCols.map(date => (
+                <th key={date}>{date}</th>
               ))}
+              <th>Initial Rating</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIdx) => (
-              <tr key={row.rank}>
-                <td className="sticky-col">{row.rank}</td>
-                {row.cells.map((cellPlayer, colIdx) => {
-                  let trend = 'none';
-                  if (colIdx === 0) {
-                    trend = 'none'; // Initial column
-                  } else if (cellPlayer) {
-                    const prevPlayer = rankingsByDate[allDateCols[colIdx - 1]][row.rank - 1];
-                    if (prevPlayer && cellPlayer.rating > prevPlayer.rating) trend = 'up';
-                    else if (prevPlayer && cellPlayer.rating < prevPlayer.rating) trend = 'down';
-                    else if (prevPlayer && cellPlayer.rating === prevPlayer.rating) trend = 'same';
+            {sortedPlayers.map((player, idx) => (
+              <tr key={player.id}>
+                <td>{idx + 1}</td>
+                <td>{player.name}</td>
+                <td>{player.currentRating}</td>
+                {dateCols.map((date, dIdx) => {
+                  const ratingNow = getRatingOnDate(player, date);
+                  // Compare with the next column to the right (older date) or initial rating if at last date
+                  const nextRating = (dIdx + 1 < dateCols.length)
+                    ? getRatingOnDate(player, dateCols[dIdx + 1])
+                    : player.initialRating;
+                  let cls = '';
+                  if (ratingNow == null) {
+                    cls = 'rating-absent';
+                  } else if (nextRating == null) {
+                    cls = 'rating-same';
+                  } else if (ratingNow > nextRating) {
+                    cls = 'rating-up';
+                  } else if (ratingNow < nextRating) {
+                    cls = 'rating-down';
+                  } else {
+                    cls = 'rating-same';
                   }
-                  return (
-                    <td key={colIdx} className={`matrix-cell trend-${trend} player-color-${playerIdToColorIdx[cellPlayer?.id]}`}>{cellPlayer ? `${cellPlayer.name} (${cellPlayer.rating})` : '-'}</td>
-                  );
+                  return <td key={date} className={cls}>{ratingNow ?? '-'}</td>;
                 })}
+                <td>{player.initialRating}</td>
               </tr>
             ))}
           </tbody>

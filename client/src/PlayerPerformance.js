@@ -31,68 +31,58 @@ function PlayerPerformance() {
   if (error) return <div style={{color:'red'}}>{error}</div>;
   if (!players.length) return <div>No players found.</div>;
 
+  // 1. Collect all unique match dates from all players' matches
+  const allDatesSet = new Set();
+  players.forEach(player => {
+    player.matches.forEach(m => {
+      if (m.date) allDatesSet.add(m.date.slice(0, 10));
+    });
+  });
+  const allDates = Array.from(allDatesSet).sort((a, b) => new Date(b) - new Date(a)); // most recent left
+
+  // 2. Sort players by currentRating descending
+  const sortedPlayers = [...players].sort((a, b) => b.currentRating - a.currentRating);
+
+  // 3. Helper to compute rating as of a date
+  function getRatingOnDate(player, date) {
+    let rating = player.initialRating;
+    // Sort matches chronologically
+    const matches = player.matches.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    for (const m of matches) {
+      if (m.date && m.date.slice(0, 10) <= date) {
+        rating += m.points;
+      }
+      if (m.date && m.date.slice(0, 10) === date) break;
+    }
+    return rating;
+  }
+
   return (
     <div className="performance-container">
       <h2>Player Performance</h2>
       <table className="performance-table">
         <thead>
           <tr>
-            <th></th>
+            <th>Rank</th>
             <th>Name</th>
-            <th>Initial Rating</th>
             <th>Current Rating</th>
-            <th>Total Points</th>
-            <th>Last Rating Updated</th>
-            <th>Matches Played</th>
+            {allDates.map(date => (
+              <th key={date}>{date}</th>
+            ))}
+            <th>Initial Rating</th>
           </tr>
         </thead>
         <tbody>
-          {players.map(player => (
-            <React.Fragment key={player.id}>
-              <tr>
-                <td>
-                  <button className="expand-btn" onClick={() => toggleExpand(player.id)}>
-                    {expanded[player.id] ? '-' : '+'}
-                  </button>
-                </td>
-                <td>{player.name}</td>
-                <td>{player.initialRating}</td>
-                <td>{player.currentRating}</td>
-                <td>{player.totalPoints}</td>
-                <td>{player.lastRatingUpdatedOn ? new Date(player.lastRatingUpdatedOn).toLocaleString() : '—'}</td>
-                <td>{player.matches.length}</td>
-              </tr>
-              {expanded[player.id] && (
-                <tr>
-                  <td colSpan={6}>
-                    <table className="match-detail-table">
-                      <thead>
-                        <tr>
-                          <th>Match ID</th>
-                          <th>Date</th>
-                          <th>Code</th>
-                          <th>Court</th>
-                          <th>Score</th>
-                          <th>Points</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {player.matches.map(m => (
-                          <tr key={m.matchId}>
-                            <td>{m.matchId}</td>
-                            <td>{m.date ? m.date.slice(0,10) : ''}</td>
-                            <td>{m.matchCode}</td>
-                            <td>{m.court}</td>
-                            <td>{m.score}</td>
-                            <td>{m.points}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
+          {sortedPlayers.map((player, idx) => (
+            <tr key={player.id}>
+              <td>{idx + 1}</td>
+              <td>{player.name}</td>
+              <td>{player.currentRating}</td>
+              {allDates.map(date => (
+                <td key={date}>{getRatingOnDate(player, date)}</td>
+              ))}
+              <td>{player.initialRating}</td>
+            </tr>
           ))}
         </tbody>
       </table>

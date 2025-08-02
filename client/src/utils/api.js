@@ -230,6 +230,7 @@ export const api = {
 
   // Public endpoints
   getPublicPerformance: () => publicApiRequest('/public/players/performance'),
+  getPublicSnapshots: () => publicApiRequest('/public/players/snapshots'),
   getPublicMatchDetails: (matchId) => publicApiRequest(`/public/matches/${matchId}`),
   getPublicMatchDays: () => publicApiRequest('/public/schedule/matchdays'),
   getTopPlayersByRatingChange: (matchDay) => publicApiRequest(`/public/players/top-by-rating-change?matchDay=${matchDay}`),

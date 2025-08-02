@@ -44,6 +44,44 @@ router.post('/matches', async (req, res) => {
 });
 
 // GET /api/public/players/performance - Public access to player performance
+// GET /api/public/players/snapshots - performance snapshots per player per finalized match day
+router.get('/players/snapshots', async (req, res) => {
+  try {
+    const Player = require('../models/Player');
+    const PlayerRatingSnapshot = require('../models/PlayerRatingSnapshot');
+    const MatchDay = require('../models/MatchDay');
+
+    const players = await Player.findAll({ order: [['currentRating', 'DESC']] });
+
+    const snapshots = await PlayerRatingSnapshot.findAll({
+      include: [{ model: MatchDay, attributes: ['date'] }],
+      order: [['matchDayId', 'DESC']]
+    });
+
+    const snapshotsByPlayer = {};
+    for (const snap of snapshots) {
+      if (!snapshotsByPlayer[snap.playerId]) snapshotsByPlayer[snap.playerId] = [];
+      snapshotsByPlayer[snap.playerId].push({
+        date: snap.MatchDay.date,
+        rating: snap.rating
+      });
+    }
+
+    const result = players.map(p => ({
+      id: p.id,
+      name: p.name,
+      initialRating: p.initialRating,
+      currentRating: p.currentRating,
+      snapshots: snapshotsByPlayer[p.id] || []
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching player snapshots:', err);
+    res.status(500).json({ error: 'Failed to fetch player snapshots' });
+  }
+});
+
 router.get('/players/performance', async (req, res) => {
   try {
     const players = await Player.findAll({

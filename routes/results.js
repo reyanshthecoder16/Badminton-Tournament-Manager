@@ -51,6 +51,19 @@ const { recordResult, finalizeMatches } = require('../services/scheduler');
  *               type: object
  */
 
+// POST /api/results/finalizeMatches - finalize match day and update ratings
+router.post('/finalizeMatches', async (req,res)=>{
+  try {
+    const { matchDayId } = req.body;
+    if(!matchDayId) return res.status(400).json({error:'matchDayId required'});
+    const result = await finalizeMatches(matchDayId);
+    res.json(result);
+  } catch(err){
+    console.error('Finalize matches error:',err);
+    res.status(500).json({error:'Failed to finalize matches'});
+  }
+});
+
 // POST /api/results
 router.post('/', async (req, res) => {
   const { matchId, winnerIds, score } = req.body;
