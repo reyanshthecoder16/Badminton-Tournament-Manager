@@ -11,7 +11,12 @@ function FinalizeMatches({ onFinalize }) {
 
   useEffect(() => {
     api.getMatchDays()
-      .then(setMatchDays)
+      .then((days) => {
+        setMatchDays(days);
+        // Extract IDs of finalized days
+        const finalized = days.filter(md => md.finalized).map(md => String(md.id));
+        setFinalizedDays(finalized);
+      })
       .catch(() => setStatus('Failed to load match days'));
   }, []);
 
@@ -63,7 +68,7 @@ function FinalizeMatches({ onFinalize }) {
         <select id="matchday-select" value={selectedMatchDay} onChange={e => setSelectedMatchDay(e.target.value)}>
           <option value="">-- Select --</option>
           {matchDays.map(md => (
-            <option key={md.id} value={md.id}>{md.date}</option>
+            <option key={md.id} value={String(md.id)}>{md.date}</option>
           ))}
         </select>
       </div>
