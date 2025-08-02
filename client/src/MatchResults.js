@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from './utils/api';
 import PlayerSelector from './PlayerSelector';
+import './MatchResults.css';
 
 function defaultMultiSort(a, b) {
   const dateA = a.date || '';
@@ -260,7 +261,23 @@ function MatchResults() {
     });
   };
 
-  const handleDualTeamSave = (match) => {
+  const handleDeleteMatch = async (matchId) => {
+    if (!window.confirm('Are you sure you want to delete this match? This will remove the match and all associated rating awards.')) {
+      return;
+    }
+    
+    setUpdating(prev => ({ ...prev, [matchId]: true }));
+    try {
+      await api.deleteMatch(matchId);
+      await fetchMatches(selectedMatchDay);
+      setValidationError('');
+    } catch (err) {
+      setValidationError(err.message || 'Failed to delete match');
+    }
+    setUpdating(prev => ({ ...prev, [matchId]: false }));
+  };
+
+  const handleDualTeamSave = async (match) => {
     const team1Size = match.team1Players?.length || match.team1?.length || 0;
     const team2Size = match.team2Players?.length || match.team2?.length || 0;
     if (dualTeamState.team1.length !== team1Size || dualTeamState.team2.length !== team2Size) {
@@ -271,16 +288,53 @@ function MatchResults() {
       setValidationError('A player cannot be in both teams.');
       return;
     }
+    
+    // Check if teams actually changed
+    const currentTeam1 = (match.team1Players || match.team1 || []).map(p => p.id || p).sort();
+    const currentTeam2 = (match.team2Players || match.team2 || []).map(p => p.id || p).sort();
+    const newTeam1 = [...dualTeamState.team1].sort();
+    const newTeam2 = [...dualTeamState.team2].sort();
+    
+    const teamsChanged = JSON.stringify(currentTeam1) !== JSON.stringify(newTeam1) || 
+                        JSON.stringify(currentTeam2) !== JSON.stringify(newTeam2);
+    
     setValidationError('');
-    setLocalTeams(prev => ({
-      ...prev,
-      [match.id]: {
-        team1: dualTeamState.team1,
-        team2: dualTeamState.team2
+    
+    // Auto-save to backend immediately
+    setUpdating(prev => ({ ...prev, [match.id]: true }));
+    try {
+      await api.updateResult(match.id, {
+        team1Players: dualTeamState.team1,
+        team2Players: dualTeamState.team2,
+        // Clear winner selection if teams changed (old winner may be invalid)
+        winnerTeam: teamsChanged ? undefined : (inputs[match.id]?.winnerTeam || match.winnerTeam),
+        score: inputs[match.id]?.scoreInput !== undefined ? inputs[match.id].scoreInput : (match.score || '')
+      });
+      
+      // Clear any pending winner selection in local state if teams changed
+      if (teamsChanged) {
+        setInputs(prev => ({
+          ...prev,
+          [match.id]: {
+            ...prev[match.id],
+            winnerTeam: undefined
+          }
+        }));
       }
-    }));
-    setChanged(prev => ({ ...prev, [match.id]: true }));
-    setEditModal({ matchId: null, team: null });
+      
+      // Refresh matches to show updated data
+      await fetchMatches(selectedMatchDay);
+      setEditModal({ matchId: null, team: null });
+      
+      if (teamsChanged) {
+        setValidationError('Teams updated! Please re-select the winner if this match has been played.');
+      } else {
+        setValidationError('');
+      }
+    } catch (err) {
+      setValidationError(err.message || 'Failed to update teams');
+    }
+    setUpdating(prev => ({ ...prev, [match.id]: false }));
   };
 
   const handleBulkUpdate = async () => {
@@ -409,6 +463,17 @@ function MatchResults() {
     return player ? player.name : `Player ${playerId}`;
   };
 
+  // Helper function to format date as DD-MON-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   if (loading) return <div>Loading matches...</div>;
   if (error) return <div>Error: {error}</div>;
   if (playersLoading) return <div>Loading players...</div>;
@@ -417,7 +482,7 @@ function MatchResults() {
   return (
     <div className="match-results-container">
       <h2>Match Results</h2>
-      <div className="filter-controls" style={{marginBottom:16, display:'flex', alignItems:'center', gap:12, justifyContent:'center'}}>
+      <div className="filter-controls">
         <label htmlFor="matchday-select">Match Date: </label>
         <select id="matchday-select" value={selectedMatchDay} onChange={e => setSelectedMatchDay(e.target.value)}>
           <option value="">-- Select --</option>
@@ -426,7 +491,7 @@ function MatchResults() {
           ))}
         </select>
         {finalizedDays.includes(Number(selectedMatchDay)) && (
-          <span style={{color:'#f39c12', fontWeight:'bold'}}>This date is finalized. Results cannot be edited.</span>
+          <span className="finalized-warning">This date is finalized. Results cannot be edited.</span>
         )}
       </div>
       <div className="sort-controls">
@@ -435,19 +500,17 @@ function MatchResults() {
         <button className={sortBy==='court' ? 'active' : ''} onClick={() => handleSort('court')}>Court {sortBy==='court' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
         <button className={sortBy==='id' ? 'active' : ''} onClick={() => handleSort('id')}>ID {sortBy==='id' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
         <button className={sortBy==='matchCode' ? 'active' : ''} onClick={() => handleSort('matchCode')}>Match {sortBy==='matchCode' ? (sortOrder==='asc'?'▲':'▼') : ''}</button>
-        {sortBy && <button style={{marginLeft:8}} onClick={()=>setSortBy('')}>Reset</button>}
+        {sortBy && <button className="reset-btn" onClick={()=>setSortBy('')}>Reset</button>}
       </div>
       <button
-        className="update-btn"
-        style={{marginBottom:16, float:'right'}}
+        className="bulk-update-btn update-btn"
         onClick={handleBulkUpdate}
         disabled={bulkUpdating || Object.keys(changed).filter(k => changed[k]).length === 0 || finalizedDays.includes(Number(selectedMatchDay))}
       >
         {bulkUpdating ? 'Updating All...' : `Update All (${Object.keys(changed).filter(k => changed[k]).length})`}
       </button>
       <button
-        className="update-btn"
-        style={{marginBottom:16, float:'right', marginRight:12, background:'#ffb347', color:'#222'}}
+        className="force-bulk-btn update-btn"
         onClick={handleForceBulkUpdate}
         disabled={bulkUpdating || finalizedDays.includes(Number(selectedMatchDay))}
       >
@@ -481,25 +544,25 @@ function MatchResults() {
             return (
               <tr key={match.id}>
                 <td>{match.id}</td>
-                <td>{match.date}</td>
+                <td>{formatDate(match.date)}</td>
                 <td>{match.court}</td>
                 <td>{match.matchCode}</td>
                 <td>{match.matchType}</td>
                 <td>
                   <b>Team 1</b>
-                  <ul style={{margin:0,paddingLeft:16}}>
+                  <ul className="list-indent">
                     {currentTeam1Ids.map(pid => (
                       <li key={pid}>{getPlayerName(pid)}</li>
                     ))}
                   </ul>
                   {!isFinalized && (
-                    <button className="update-btn" style={{marginTop:4, fontSize:'0.92em'}} onClick={() => handleDualTeamEdit(match)}>Edit</button>
+                    <button className="update-btn small" onClick={() => handleDualTeamEdit(match)}>Edit</button>
                   )}
                   {(editModal.matchId === match.id && editModal.team === 'both') && (
                     <div className="modal-bg" onClick={()=>setEditModal({ matchId: null, team: null })}>
                       <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <div style={{display:'flex',gap:24}}>
-                          <div style={{flex:1}}>
+                        <div className="flex-gap-24">
+                          <div className="flex-1">
                             <PlayerSelector
                               players={players}
                               selected={dualTeamState.team1}
@@ -508,7 +571,7 @@ function MatchResults() {
                               label="Select Team 1 Players"
                             />
                           </div>
-                          <div style={{flex:1}}>
+                          <div className="flex-1">
                             <PlayerSelector
                               players={players}
                               selected={dualTeamState.team2}
@@ -518,9 +581,11 @@ function MatchResults() {
                             />
                           </div>
                         </div>
-                        {validationError && <div style={{color:'red',marginTop:8}}>{validationError}</div>}
-                        <div style={{marginTop:16, display:'flex',gap:8}}>
-                          <button className="update-btn" onClick={()=>handleDualTeamSave(match)}>Save</button>
+                        {validationError && <div className="error-text">{validationError}</div>}
+                        <div className="flex-gap-8">
+                          <button className="update-btn" onClick={()=>handleDualTeamSave(match)} disabled={updating[match.id]}>{
+                            updating[match.id] ? 'Saving...' : 'Save'
+                          }</button>
                           <button className="update-btn" onClick={()=>setEditModal({ matchId: null, team: null })}>Cancel</button>
                         </div>
                       </div>
@@ -529,19 +594,19 @@ function MatchResults() {
                 </td>
                 <td>
                   <b>Team 2</b>
-                  <ul style={{margin:0,paddingLeft:16}}>
+                  <ul className="list-indent">
                     {currentTeam2Ids.map(pid => (
                       <li key={pid}>{getPlayerName(pid)}</li>
                     ))}
                   </ul>
                   {!isFinalized && (
-                    <button className="update-btn" style={{marginTop:4, fontSize:'0.92em'}} onClick={() => handleDualTeamEdit(match)}>Edit</button>
+                    <button className="update-btn small" onClick={() => handleDualTeamEdit(match)}>Edit</button>
                   )}
                   {(editModal.matchId === match.id && editModal.team === 'both') && (
                     <div className="modal-bg" onClick={()=>setEditModal({ matchId: null, team: null })}>
                       <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <div style={{display:'flex',gap:24}}>
-                          <div style={{flex:1}}>
+                        <div className="flex-gap-24">
+                          <div className="flex-1">
                             <PlayerSelector
                               players={players}
                               selected={dualTeamState.team1}
@@ -550,7 +615,7 @@ function MatchResults() {
                               label="Select Team 1 Players"
                             />
                           </div>
-                          <div style={{flex:1}}>
+                          <div className="flex-1">
                             <PlayerSelector
                               players={players}
                               selected={dualTeamState.team2}
@@ -560,9 +625,11 @@ function MatchResults() {
                             />
                           </div>
                         </div>
-                        {validationError && <div style={{color:'red',marginTop:8}}>{validationError}</div>}
-                        <div style={{marginTop:16, display:'flex',gap:8}}>
-                          <button className="update-btn" onClick={()=>handleDualTeamSave(match)}>Save</button>
+                        {validationError && <div className="error-text">{validationError}</div>}
+                        <div className="flex-gap-8">
+                          <button className="update-btn" onClick={()=>handleDualTeamSave(match)} disabled={updating[match.id]}>{
+                            updating[match.id] ? 'Saving...' : 'Save'
+                          }</button>
                           <button className="update-btn" onClick={()=>setEditModal({ matchId: null, team: null })}>Cancel</button>
                         </div>
                       </div>
@@ -600,19 +667,31 @@ function MatchResults() {
                   />
                 </td>
                 <td>
-                  <button
-                    className="update-btn"
-                    onClick={() => handleUpdate(match.id, match)}
-                    disabled={updating[match.id] || isFinalized}
-                  >
-                    {isFinalized ? 'Finalized' : (updating[match.id] ? 'Updating...' : 'Update')}
-                  </button>
+                  <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                    <button
+                      className="update-btn"
+                      onClick={() => handleUpdate(match.id, match)}
+                      disabled={updating[match.id] || isFinalized}
+                    >
+                      {isFinalized ? 'Finalized' : (updating[match.id] ? 'Updating...' : 'Update')}
+                    </button>
+                    {!isFinalized && (
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDeleteMatch(match.id)}
+                        disabled={updating[match.id]}
+                      >
+                        {updating[match.id] ? 'Deleting...' : 'Delete'}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {validationError && <div style={{color:'red',marginTop:16}}>{validationError}</div>}
       <style>{`
         .match-results-container {
           max-width: 1100px;

@@ -241,7 +241,7 @@ async function importSamplePlayers() {
 }
 
 // Sync DB and start server
-db.sync({ alter: true }).then(async () => {
+db.sync().then(async () => {
   console.log('🗄️  Database synchronized successfully');
   
   try {

@@ -179,4 +179,29 @@ router.get('/matches', async (req, res) => {
   }
 });
 
+// DELETE /api/results/:id - Delete match and associated rating awards
+router.delete('/:id', async (req, res) => {
+  try {
+    const { Match, RatingAwards } = require('../models/Match');
+    const matchId = req.params.id;
+    
+    // Find the match
+    const match = await Match.findByPk(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+    
+    // Delete associated RatingAwards first (foreign key constraint)
+    await RatingAwards.destroy({ where: { MatchId: matchId } });
+    
+    // Delete the match
+    await match.destroy();
+    
+    res.json({ message: 'Match and associated rating awards deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting match:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

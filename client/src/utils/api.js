@@ -213,6 +213,9 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(resultData),
   }),
+  deleteMatch: (id) => apiRequest(`/results/${id}`, {
+    method: 'DELETE',
+  }),
 
   // Auth
   login: (credentials) => publicApiRequest('/auth/login', {
