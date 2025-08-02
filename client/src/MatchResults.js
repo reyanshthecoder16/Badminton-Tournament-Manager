@@ -50,7 +50,6 @@ function MatchResults() {
     matchType: '',
     team1: [],
     team2: [],
-    date: '',
     court: '',
   });
 
@@ -275,6 +274,64 @@ function MatchResults() {
       setValidationError(err.message || 'Failed to delete match');
     }
     setUpdating(prev => ({ ...prev, [matchId]: false }));
+  };
+
+  const handleAddMatch = async () => {
+    setValidationError('');
+    
+    // Validation
+    if (!newMatch.matchCode || !newMatch.matchType || !newMatch.court) {
+      setValidationError('Please fill in all required fields.');
+      return;
+    }
+    
+    if (newMatch.team1.length === 0 || newMatch.team2.length === 0) {
+      setValidationError('Both teams must have players.');
+      return;
+    }
+    
+    if (newMatch.team1.some(id => newMatch.team2.includes(id))) {
+      setValidationError('A player cannot be in both teams.');
+      return;
+    }
+    
+    const maxPlayers = newMatch.matchType === 'singles' ? 1 : 2;
+    if (newMatch.team1.length !== maxPlayers || newMatch.team2.length !== maxPlayers) {
+      setValidationError(`${newMatch.matchType} matches require ${maxPlayers} player(s) per team.`);
+      return;
+    }
+    
+    try {
+      // Get current match day date
+      const currentMatchDay = matchDays.find(md => md.id == selectedMatchDay);
+      const matchDate = currentMatchDay ? currentMatchDay.date : new Date().toISOString().split('T')[0];
+      
+      await api.createMatch({
+        matchCode: newMatch.matchCode,
+        matchType: newMatch.matchType,
+        court: parseInt(newMatch.court),
+        team1: newMatch.team1,
+        team2: newMatch.team2,
+        date: matchDate,
+        MatchDayId: selectedMatchDay
+      });
+      
+      // Reset form and close modal
+      setNewMatch({
+        matchCode: '',
+        matchType: '',
+        team1: [],
+        team2: [],
+        court: '',
+      });
+      setAddMatchModal(false);
+      
+      // Refresh matches
+      await fetchMatches(selectedMatchDay);
+      setValidationError('');
+    } catch (err) {
+      setValidationError(err.message || 'Failed to create match');
+    }
   };
 
   const handleDualTeamSave = async (match) => {
@@ -516,6 +573,13 @@ function MatchResults() {
       >
         {bulkUpdating ? 'Force Updating...' : 'Force Update All'}
       </button>
+      <button
+        className="add-match-btn update-btn"
+        onClick={() => setAddMatchModal(true)}
+        disabled={!selectedMatchDay}
+      >
+        + Add Match
+      </button>
       <table className="match-table">
         <thead>
           <tr>
@@ -692,6 +756,79 @@ function MatchResults() {
         </tbody>
       </table>
       {validationError && <div style={{color:'red',marginTop:16}}>{validationError}</div>}
+      
+      {/* Manual Match Creation Modal */}
+      {addMatchModal && (
+        <div className="modal-bg" onClick={() => setAddMatchModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Add Manual Match</h3>
+            <div style={{marginBottom: 16}}>
+              <label>Match Code:</label>
+              <input
+                type="text"
+                value={newMatch.matchCode}
+                onChange={e => setNewMatch(prev => ({...prev, matchCode: e.target.value}))}
+                placeholder="e.g., M1, M2, etc."
+                style={{width: '100%', padding: '8px', marginTop: '4px'}}
+              />
+            </div>
+            <div style={{marginBottom: 16}}>
+              <label>Match Type:</label>
+              <select
+                value={newMatch.matchType}
+                onChange={e => setNewMatch(prev => ({...prev, matchType: e.target.value}))}
+                style={{width: '100%', padding: '8px', marginTop: '4px'}}
+              >
+                <option value="">Select type...</option>
+                <option value="singles">Singles</option>
+                <option value="doubles">Doubles</option>
+                <option value="mixed">Mixed Doubles</option>
+              </select>
+            </div>
+            <div style={{marginBottom: 16}}>
+              <label>Court:</label>
+              <input
+                type="number"
+                value={newMatch.court}
+                onChange={e => setNewMatch(prev => ({...prev, court: e.target.value}))}
+                placeholder="Court number"
+                style={{width: '100%', padding: '8px', marginTop: '4px'}}
+              />
+            </div>
+            <div style={{marginBottom: 16}}>
+              <label>Team 1 Players:</label>
+              <PlayerSelector
+                players={players}
+                selected={newMatch.team1}
+                onChange={ids => setNewMatch(prev => ({...prev, team1: ids}))}
+                max={newMatch.matchType === 'singles' ? 1 : 2}
+                label="Select Team 1 Players"
+              />
+            </div>
+            <div style={{marginBottom: 16}}>
+              <label>Team 2 Players:</label>
+              <PlayerSelector
+                players={players}
+                selected={newMatch.team2}
+                onChange={ids => setNewMatch(prev => ({...prev, team2: ids}))}
+                max={newMatch.matchType === 'singles' ? 1 : 2}
+                label="Select Team 2 Players"
+              />
+            </div>
+            {validationError && <div style={{color:'red', marginBottom: 16}}>{validationError}</div>}
+            <div className="flex-gap-8">
+              <button
+                className="update-btn"
+                onClick={handleAddMatch}
+                disabled={!newMatch.matchCode || !newMatch.matchType || newMatch.team1.length === 0 || newMatch.team2.length === 0}
+              >
+                Add Match
+              </button>
+              <button className="update-btn" onClick={() => setAddMatchModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`
         .match-results-container {
           max-width: 1100px;

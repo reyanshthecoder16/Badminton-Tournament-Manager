@@ -216,6 +216,10 @@ export const api = {
   deleteMatch: (id) => apiRequest(`/results/${id}`, {
     method: 'DELETE',
   }),
+  createMatch: (matchData) => apiRequest('/results/match', {
+    method: 'POST',
+    body: JSON.stringify(matchData),
+  }),
 
   // Auth
   login: (credentials) => publicApiRequest('/auth/login', {

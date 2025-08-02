@@ -204,4 +204,43 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/results/match - Create a new match
+router.post('/match', async (req, res) => {
+  try {
+    const { Match, RatingAwards } = require('../models/Match');
+    const { matchCode, matchType, court, team1, team2, date, MatchDayId } = req.body;
+    
+    // Validation
+    if (!matchCode || !matchType || !team1 || !team2 || !date) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // Create the match
+    const match = await Match.create({
+      matchCode,
+      matchType,
+      court: court || 1,
+      team1,
+      team2,
+      date,
+      MatchDayId: MatchDayId || null
+    });
+    
+    // Create RatingAwards for all players
+    const allPlayers = [...team1, ...team2];
+    for (const playerId of allPlayers) {
+      await RatingAwards.create({
+        MatchId: match.id,
+        PlayerId: playerId,
+        Rating: 0
+      });
+    }
+    
+    res.status(201).json({ message: 'Match created successfully', match });
+  } catch (error) {
+    console.error('Error creating match:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
