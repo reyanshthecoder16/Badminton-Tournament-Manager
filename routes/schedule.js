@@ -33,9 +33,56 @@ const Player = require('../models/Player');
 
 // POST /api/schedule
 router.post('/', async (req, res) => {
-  const { date } = req.body;
-  const schedule = await generateSchedule(date);
-  res.json(schedule);
+  try {
+    const { date } = req.body;
+    
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+    
+    // Check if schedule already exists for this date
+    const existingMatches = await Match.findOne({ where: { date } });
+    if (existingMatches) {
+      return res.status(409).json({ 
+        error: 'Schedule already exists for this date',
+        alreadyGenerated: true 
+      });
+    }
+    
+    // Check if MatchDay exists for this date
+    const existingMatchDay = await MatchDay.findOne({ where: { date } });
+    if (existingMatchDay) {
+      return res.status(409).json({ 
+        error: 'MatchDay already exists for this date',
+        alreadyGenerated: true 
+      });
+    }
+    
+    const schedule = await generateSchedule(date);
+    res.json({ schedule, alreadyGenerated: false });
+  } catch (error) {
+    console.error('Error generating schedule:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/schedule/check/:date - Check if schedule exists for date
+router.get('/check/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    
+    // Check if matches exist for this date
+    const existingMatches = await Match.findOne({ where: { date } });
+    // Check if MatchDay exists for this date
+    const existingMatchDay = await MatchDay.findOne({ where: { date } });
+    
+    const alreadyGenerated = !!(existingMatches || existingMatchDay);
+    
+    res.json({ alreadyGenerated, date });
+  } catch (error) {
+    console.error('Error checking schedule:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // GET /api/matchdays - return all match days (id, date)

@@ -193,6 +193,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(scheduleData),
   }),
+  checkScheduleExists: (date) => apiRequest(`/schedule/check/${date}`),
   updateSchedule: (id, scheduleData) => apiRequest(`/schedule/${id}`, {
     method: 'PUT',
     body: JSON.stringify(scheduleData),

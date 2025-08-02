@@ -11,10 +11,33 @@ function AttendanceAndSchedule() {
   const [error, setError] = useState(null);
   const [showExport, setShowExport] = useState(false);
   const [generatedDates, setGeneratedDates] = useState([]);
+  const [checkingSchedule, setCheckingSchedule] = useState(false);
 
   useEffect(() => {
     fetchPlayers();
   }, []);
+
+  // Check if schedule exists when date changes
+  useEffect(() => {
+    if (date) {
+      checkScheduleExists();
+    }
+  }, [date]);
+
+  const checkScheduleExists = async () => {
+    setCheckingSchedule(true);
+    try {
+      const result = await api.checkScheduleExists(date);
+      if (result.alreadyGenerated) {
+        setGeneratedDates(prev => prev.includes(date) ? prev : [...prev, date]);
+      } else {
+        setGeneratedDates(prev => prev.filter(d => d !== date));
+      }
+    } catch (err) {
+      console.error('Error checking schedule:', err);
+    }
+    setCheckingSchedule(false);
+  };
 
   const fetchPlayers = async () => {
     setLoading(true);
@@ -57,10 +80,21 @@ function AttendanceAndSchedule() {
     setSchedule(null);
     try {
       const data = await api.createSchedule({ date });
-      setSchedule(data);
+      // Handle new response format from backend
+      if (data.alreadyGenerated) {
+        alert('Schedule already exists for this date');
+        setGeneratedDates(prev => prev.includes(date) ? prev : [...prev, date]);
+        return;
+      }
+      setSchedule(data.schedule || data);
       setGeneratedDates(prev => [...prev, date]);
     } catch (err) {
-      alert('Failed to generate schedule');
+      if (err.message && err.message.includes('already exists')) {
+        alert('Schedule already exists for this date');
+        setGeneratedDates(prev => prev.includes(date) ? prev : [...prev, date]);
+      } else {
+        alert('Failed to generate schedule');
+      }
     }
   };
 
@@ -145,8 +179,8 @@ function AttendanceAndSchedule() {
         <button className="update-btn" onClick={handleSaveAttendance} disabled={saving}>
           {saving ? 'Saving...' : 'Save Attendance'}
         </button>
-        <button className="update-btn" style={{marginLeft:12}} onClick={handleGenerateSchedule} disabled={generatedDates.includes(date)}>
-          {generatedDates.includes(date) ? 'Already Generated' : 'Generate Schedule'}
+        <button className="update-btn" style={{marginLeft:12}} onClick={handleGenerateSchedule} disabled={generatedDates.includes(date) || checkingSchedule}>
+          {checkingSchedule ? 'Checking...' : (generatedDates.includes(date) ? 'Already Generated' : 'Generate Schedule')}
         </button>
         {generatedDates.includes(date) && (
           <span style={{marginLeft:8, color:'#f39c12'}}>Schedule for this day has already been generated.</span>
