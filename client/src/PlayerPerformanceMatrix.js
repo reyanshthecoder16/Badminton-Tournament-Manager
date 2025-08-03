@@ -57,7 +57,14 @@ function PlayerPerformanceMatrix({ reloadRef, onReloaded, onPlayerClick }) {
 
 
 
-  const sortedPlayers = [...players].sort((a, b) => b.currentRating - a.currentRating);
+  const sortedPlayers = [...players].sort((a, b) => {
+    const crA = a.currentRating ?? 0;
+    const crB = b.currentRating ?? 0;
+    if (crB !== crA) return crB - crA;
+    const irA = a.initialRating ?? 0;
+    const irB = b.initialRating ?? 0;
+    return irB - irA;
+  });
 
   return (
     <div className="matrix-container">
