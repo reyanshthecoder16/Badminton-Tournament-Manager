@@ -4,6 +4,7 @@ const { generateSchedule } = require('../services/scheduler');
 const MatchDay = require('../models/MatchDay');
 const { Match } = require('../models/Match');
 const Player = require('../models/Player');
+const { Sequelize } = require('sequelize');
 
 /**
  * @swagger
@@ -43,12 +44,16 @@ router.post('/', async (req, res) => {
     var matchDayExistsForDate = false;
     
     // Check if schedule already exists for this date
-    const existingMatches = await Match.findOne({ where: { date } });
+    const existingMatches = await Match.findOne({
+      where: Sequelize.where(Sequelize.fn('DATE', Sequelize.col('date')), date)
+    });
     if (existingMatches) {matchesExistsForDate = true
     }
     
     // Check if MatchDay exists for this date
-    const existingMatchDay = await MatchDay.findOne({ where: { date } });
+    const existingMatchDay = await MatchDay.findOne({
+      where: Sequelize.where(Sequelize.fn('DATE', Sequelize.col('date')), date)
+    });
     if (existingMatchDay) {
       matchDayExistsForDate =true;
     }
@@ -73,10 +78,14 @@ router.get('/check/:date', async (req, res) => {
     const { date } = req.params;
     
     // Check if matches exist for this date
-    const existingMatches = await Match.findOne({ where: { date } });
+    const existingMatches = await Match.findOne({
+      where: Sequelize.where(Sequelize.fn('DATE', Sequelize.col('date')), date)
+    });
     // Check if MatchDay exists for this date
     console.log('existingMatches', existingMatches);
-    const existingMatchDay = await MatchDay.findOne({ where: { date } });
+    const existingMatchDay = await MatchDay.findOne({
+      where: Sequelize.where(Sequelize.fn('DATE', Sequelize.col('date')), date)
+    });
     console.log('existingMatchDay', existingMatchDay);
     const alreadyGenerated = !!(existingMatches && existingMatchDay);
     

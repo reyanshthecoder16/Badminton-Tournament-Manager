@@ -12,7 +12,11 @@ async function generateSchedule(date = new Date()) {
     // Defensive: check Attendance table exists and query works
     let attendance;
     try {
-      attendance = await Attendance.findAll({ where: { MatchDayId: matchDay.id, present: true }, include: Player });
+      attendance = await Attendance.findAll({
+        where: { MatchDayId: matchDay.id, present: true },
+        include: [{ model: Player }],
+        order: [[Player, 'currentRating', 'DESC'], [Player, 'initialRating', 'DESC']]
+      });
     } catch (err) {
       console.error('Attendance query error:', err);
       throw err;
@@ -24,7 +28,7 @@ async function generateSchedule(date = new Date()) {
       const group = present.slice(i, i + 8);
       if (group.length < 8) break;
       const codes = [
-        ['M1', [[0,3],[1,2]]], ['M2', [[4,7],[5,6]]], ['M4', [[0,7],[1,6]]], ['M3', [[2,5],[3,4]]],
+        ['M1', [[0,3],[1,2]]], ['M2', [[4,7],[5,6]]], ['M3', [[2,5],[3,4]]],['M4', [[0,7],[1,6]]],
         ['M5', [[0],[1]]], ['M6', [[2],[3]]], ['M7', [[4],[5]]], ['M8', [[6],[7]]],
         ['M9', [[0,2],[1,3]]], ['M10',[[4,6],[5,7]]], ['M11',[[0,1],[2,3]]], ['M12',[[4,5],[6,7]]]
       ];
