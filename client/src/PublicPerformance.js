@@ -240,7 +240,9 @@ function PublicPerformance({ initialPlayerId }) {
         {currentPlayers.map((player, index) => (
           <div key={player.id} className="player-card">
             <div className="player-header">
-              <div className="rank-badge">#{startIndex + index + 1}</div>
+              {!searchTerm && (
+                <div className="rank-badge">#{startIndex + index + 1}</div>
+              )}
               <h3 className="player-name">{player.name}</h3>
               <div className="rating-info">
                 <span className="current-rating">{player.currentRating}</span>
