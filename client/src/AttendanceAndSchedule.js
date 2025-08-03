@@ -51,10 +51,19 @@ function AttendanceAndSchedule() {
     setError(null);
     try {
       const data = await api.getPlayers();
-      setPlayers(data);
+      // Sort by currentRating desc, then initialRating desc
+      const sorted = [...data].sort((a, b) => {
+        const crA = a.currentRating ?? 0;
+        const crB = b.currentRating ?? 0;
+        if (crB !== crA) return crB - crA;
+        const irA = a.initialRating ?? 0;
+        const irB = b.initialRating ?? 0;
+        return irB - irA;
+      });
+      setPlayers(sorted);
       // Default: all present
       const att = {};
-      data.forEach(p => { att[p.id] = true; });
+      sorted.forEach(p => { att[p.id] = true; });
       setAttendance(att);
     } catch (err) {
       setError('Failed to fetch players');

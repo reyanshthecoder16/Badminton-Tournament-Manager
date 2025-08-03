@@ -39,21 +39,22 @@ router.post('/', async (req, res) => {
     if (!date) {
       return res.status(400).json({ error: 'Date is required' });
     }
+    var matchesExistsForDate = false;
+    var matchDayExistsForDate = false;
     
     // Check if schedule already exists for this date
     const existingMatches = await Match.findOne({ where: { date } });
-    if (existingMatches) {
-      return res.status(409).json({ 
-        error: 'Schedule already exists for this date',
-        alreadyGenerated: true 
-      });
+    if (existingMatches) {matchesExistsForDate = true
     }
     
     // Check if MatchDay exists for this date
     const existingMatchDay = await MatchDay.findOne({ where: { date } });
     if (existingMatchDay) {
+      matchDayExistsForDate =true;
+    }
+    if(matchesExistsForDate && matchDayExistsForDate){
       return res.status(409).json({ 
-        error: 'MatchDay already exists for this date',
+        error: 'Schedule already exists for this date',
         alreadyGenerated: true 
       });
     }
@@ -74,9 +75,10 @@ router.get('/check/:date', async (req, res) => {
     // Check if matches exist for this date
     const existingMatches = await Match.findOne({ where: { date } });
     // Check if MatchDay exists for this date
+    console.log('existingMatches', existingMatches);
     const existingMatchDay = await MatchDay.findOne({ where: { date } });
-    
-    const alreadyGenerated = !!(existingMatches || existingMatchDay);
+    console.log('existingMatchDay', existingMatchDay);
+    const alreadyGenerated = !!(existingMatches && existingMatchDay);
     
     res.json({ alreadyGenerated, date });
   } catch (error) {

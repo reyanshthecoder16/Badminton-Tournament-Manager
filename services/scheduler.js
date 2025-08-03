@@ -18,6 +18,7 @@ async function generateSchedule(date = new Date()) {
       throw err;
     }
     const present = attendance.filter(a => a.Player).map(a => a.Player);
+    console.log('present people:-', present);
     const courts = [];
     for (let i = 0; i < present.length; i += 8) {
       const group = present.slice(i, i + 8);
