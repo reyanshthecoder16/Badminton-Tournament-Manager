@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './PublicPerformance.css';
 import { api } from './utils/api';
 
-function PublicPerformance() {
+function PublicPerformance({ initialPlayerId }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,6 +25,18 @@ function PublicPerformance() {
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // When players are loaded and initialPlayerId is provided, auto-expand that player's details
+  useEffect(() => {
+    if (initialPlayerId && players.length > 0) {
+      const target = players.find(p => p.id === initialPlayerId);
+      if (target) {
+        setSearchTerm(target.name);
+        setExpanded({ [initialPlayerId]: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPlayerId, players]);
 
   useEffect(() => {
     // Reset to first page when search or sort changes

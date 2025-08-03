@@ -13,6 +13,7 @@ function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('home'); // 'home', 'leaderboard', 'performance', 'admin', 'results', 'attendance', 'finalize', 'export'
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -151,7 +152,7 @@ function App() {
                 </button>
                 <h2>Leaderboard</h2>
               </div>
-              <PlayerPerformanceMatrix />
+              <PlayerPerformanceMatrix onPlayerClick={(playerId) => { setSelectedPlayerId(playerId); setCurrentView('performance'); }} />
             </div>
           )}
 
@@ -163,7 +164,7 @@ function App() {
                 </button>
                 <h2>Player Performance</h2>
               </div>
-              <PublicPerformance />
+              <PublicPerformance initialPlayerId={selectedPlayerId} />
             </div>
           )}
 

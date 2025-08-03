@@ -3,7 +3,7 @@ import './PlayerPerformanceMatrix.css';
 import { api } from './utils/api';
 
 // Accept reloadRef or onReloaded prop to allow parent to force a refetch
-function PlayerPerformanceMatrix({ reloadRef, onReloaded }) {
+function PlayerPerformanceMatrix({ reloadRef, onReloaded, onPlayerClick }) {
   const [players, setPlayers] = useState([]);
   const [dates, setDates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +79,15 @@ function PlayerPerformanceMatrix({ reloadRef, onReloaded }) {
             {sortedPlayers.map((player, idx) => (
               <tr key={player.id}>
                 <td>{idx + 1}</td>
-                <td>{player.name}</td>
+                <td className="player-name-cell">
+                    {onPlayerClick ? (
+                      <a href="#performance" className="player-link" onClick={(e) => { e.preventDefault(); onPlayerClick(player.id); }}>
+                        {player.name}
+                      </a>
+                    ) : (
+                      player.name
+                    )}
+                  </td>
                 <td>{player.currentRating}</td>
                 {dateCols.map((date, dIdx) => {
                   const ratingNow = getRatingOnDate(player, date);
