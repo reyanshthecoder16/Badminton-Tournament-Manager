@@ -115,16 +115,16 @@ router.get('/players/performance', async (req, res) => {
           order: [['date', 'DESC']]
         });
         
-        // Map match info and points for each match
-        const matchDetails = awards.map(a => {
-          const match = matches.find(m => m.id === a.MatchId);
-          return match ? {
+        // Map match info and points for each match (preserve sorted order)
+        const matchDetails = matches.map(match => {
+          const award = awards.find(a => a.MatchId === match.id);
+          return award ? {
             matchId: match.id,
             date: match.date,
             matchCode: match.matchCode,
             court: match.court,
             score: match.score,
-            points: a.Rating
+            points: award.Rating
           } : null;
         }).filter(Boolean);
         

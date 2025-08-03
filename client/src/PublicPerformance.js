@@ -18,6 +18,10 @@ function PublicPerformance({ initialPlayerId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [playersPerPage, setPlayersPerPage] = useState(10);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Match pagination state - separate for each player
+  const [matchPages, setMatchPages] = useState({}); // { playerId: currentPage }
+  const matchesPerPage = 5;
 
   useEffect(() => {
     fetchPerformance();
@@ -90,6 +94,16 @@ function PublicPerformance({ initialPlayerId }) {
 
   const toggleExpand = (id) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    // Reset match page when expanding/collapsing
+    if (!expanded[id]) {
+      setMatchPages(prev => ({ ...prev, [id]: 1 }));
+    }
+  };
+
+  const getMatchPage = (playerId) => matchPages[playerId] || 1;
+  
+  const setMatchPage = (playerId, page) => {
+    setMatchPages(prev => ({ ...prev, [playerId]: page }));
   };
 
   const handleSort = (field) => {
@@ -274,38 +288,63 @@ function PublicPerformance({ initialPlayerId }) {
                   {expanded[player.id] ? '▼' : '▶'} Recent Matches ({player.matches.length})
                 </button>
                 
-                {expanded[player.id] && (
-                  <div className="matches-list">
-                    {player.matches.slice(0, 5).map((match) => (
-                      <div key={match.matchId} className="match-item">
-                        <div className="match-header">
+                {expanded[player.id] && (() => {
+                  const currentMatchPage = getMatchPage(player.id);
+                  const startIdx = (currentMatchPage - 1) * matchesPerPage;
+                  const endIdx = startIdx + matchesPerPage;
+                  const paginatedMatches = player.matches.slice(startIdx, endIdx);
+                  const totalPages = Math.ceil(player.matches.length / matchesPerPage);
+                  
+                  return (
+                    <div className="matches-list">
+                      {paginatedMatches.map((match) => (
+                        <div key={match.matchId} className="match-item">
+                          <div className="match-header">
+                            <button 
+                              className="match-code-link"
+                              onClick={() => handleMatchClick(match.matchId)}
+                              title="Click to view match details"
+                            >
+                              {match.matchCode}
+                            </button>
+                            <span className="match-date">{new Date(match.date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="match-details">
+                            <span className="court">Court {match.court}</span>
+                            <span className={`points ${match.points >= 0 ? 'positive' : 'negative'}`}>
+                              {match.points >= 0 ? '+' : ''}{match.points} pts
+                            </span>
+                          </div>
+                          {match.score && (
+                            <div className="match-score">Score: {match.score}</div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {totalPages > 1 && (
+                        <div className="match-pagination">
                           <button 
-                            className="match-code-link"
-                            onClick={() => handleMatchClick(match.matchId)}
-                            title="Click to view match details"
+                            className="page-btn" 
+                            onClick={() => setMatchPage(player.id, currentMatchPage - 1)}
+                            disabled={currentMatchPage === 1}
                           >
-                            {match.matchCode}
+                            ← Previous
                           </button>
-                          <span className="match-date">{new Date(match.date).toLocaleDateString()}</span>
-                        </div>
-                        <div className="match-details">
-                          <span className="court">Court {match.court}</span>
-                          <span className={`points ${match.points >= 0 ? 'positive' : 'negative'}`}>
-                            {match.points >= 0 ? '+' : ''}{match.points} pts
+                          <span className="page-info">
+                            Page {currentMatchPage} of {totalPages} ({player.matches.length} matches)
                           </span>
+                          <button 
+                            className="page-btn" 
+                            onClick={() => setMatchPage(player.id, currentMatchPage + 1)}
+                            disabled={currentMatchPage === totalPages}
+                          >
+                            Next →
+                          </button>
                         </div>
-                        {match.score && (
-                          <div className="match-score">Score: {match.score}</div>
-                        )}
-                      </div>
-                    ))}
-                    {player.matches.length > 5 && (
-                      <div className="more-matches">
-                        <span>... and {player.matches.length - 5} more matches</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

@@ -558,6 +558,60 @@
 }
 
 /* Match Details Modal */
+.match-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.page-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.page-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .match-pagination {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  
+  .page-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .page-info {
+    font-size: 0.8rem;
+  }
+}
+
 .match-modal-overlay {
   position: fixed;
   top: 0;
