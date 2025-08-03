@@ -7,13 +7,14 @@ import FinalizeMatches from './FinalizeMatches';
 import Login from './Login';
 import PublicPerformance from './PublicPerformance';
 import PublicComparison from './PublicComparison';
+import PlayerManagement from './PlayerManagement';
 import { isAuthenticated, getUser, logout, api } from './utils/api';
 import './App.css';
 
 function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [currentView, setCurrentView] = useState('home'); // 'home', 'leaderboard', 'performance', 'compare', 'admin', 'results', 'attendance', 'finalize', 'export'
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'leaderboard', 'performance', 'compare', 'admin', 'results', 'attendance', 'finalize', 'export', 'players'
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -285,6 +286,11 @@ function App() {
                 <h3>Export Schedule</h3>
                 <p>Export match schedules and data</p>
               </div>
+              <div className="admin-card" onClick={() => handleNav('players')}>
+                <div className="card-icon">👥</div>
+                <h3>Player Management</h3>
+                <p>Add, edit, and manage player details</p>
+              </div>
             </div>
           </div>
         )}
@@ -293,6 +299,7 @@ function App() {
         {currentView === 'attendance' && <AttendanceAndSchedule />}
         {currentView === 'finalize' && <FinalizeMatches onFinalize={() => leaderboardRef.current && leaderboardRef.current.reload()} />}
         {currentView === 'export' && <ScheduleExport players={players} />}
+        {currentView === 'players' && <PlayerManagement />}
       </main>
     </div>
   );

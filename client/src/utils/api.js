@@ -232,9 +232,34 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(passwordData),
   }),
-  logout: () => apiRequest('/auth/logout', {
-    method: 'POST',
-  }),
+  logout: async () => {
+    return await apiRequest('/auth/logout', { method: 'POST' });
+  },
+
+  // Player management
+  createPlayer: async (playerData) => {
+    return await apiRequest('/players', {
+      method: 'POST',
+      body: JSON.stringify(playerData)
+    });
+  },
+
+  updatePlayer: async (playerId, playerData) => {
+    return await apiRequest(`/players/${playerId}`, {
+      method: 'PUT',
+      body: JSON.stringify(playerData)
+    });
+  },
+
+  deletePlayer: async (playerId) => {
+    return await apiRequest(`/players/${playerId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  checkPlayerMatches: async (playerId) => {
+    return await apiRequest(`/players/${playerId}/matches`);
+  },
 
   // Public endpoints
   getPublicPerformance: () => publicApiRequest('/public/players/performance'),
