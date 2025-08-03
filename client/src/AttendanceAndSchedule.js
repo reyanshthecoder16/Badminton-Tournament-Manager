@@ -24,6 +24,13 @@ function AttendanceAndSchedule() {
     }
   }, [date]);
 
+  // Load attendance whenever players list or date changes
+  useEffect(() => {
+    if (players.length) {
+      fetchAttendance(date);
+    }
+  }, [players, date]);
+
   const checkScheduleExists = async () => {
     setCheckingSchedule(true);
     try {
@@ -53,6 +60,32 @@ function AttendanceAndSchedule() {
       setError('Failed to fetch players');
     }
     setLoading(false);
+  };
+
+  // Fetch attendance records for the selected date from API
+  const fetchAttendance = async (selectedDate) => {
+    try {
+      const records = await api.getAttendanceByDate(selectedDate);
+      if (Array.isArray(records) && records.length > 0) {
+        const att = {};
+        records.forEach(rec => {
+          const pid = rec.PlayerId || rec.playerId || (rec.Player && rec.Player.id);
+          if (pid != null) {
+            att[pid] = !!rec.present;
+          }
+        });
+        // Ensure every player has an entry
+        players.forEach(p => { if (att[p.id] === undefined) att[p.id] = true; });
+        setAttendance(att);
+      } else {
+        // No attendance saved yet - default all present
+        const att = {};
+        players.forEach(p => { att[p.id] = true; });
+        setAttendance(att);
+      }
+    } catch (err) {
+      console.error('Failed to fetch attendance:', err);
+    }
   };
 
   const handleToggle = (id) => {
@@ -176,8 +209,8 @@ function AttendanceAndSchedule() {
         </tbody>
       </table>
       <div style={{marginTop:16, textAlign:'right'}}>
-        <button className="update-btn" onClick={handleSaveAttendance} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Attendance'}
+        <button className="update-btn" onClick={handleSaveAttendance} disabled={saving || generatedDates.includes(date) || checkingSchedule}>
+          {generatedDates.includes(date) ? 'Attendance Locked' : (saving ? 'Saving...' : 'Save Attendance')}
         </button>
         <button className="update-btn" style={{marginLeft:12}} onClick={handleGenerateSchedule} disabled={generatedDates.includes(date) || checkingSchedule}>
           {checkingSchedule ? 'Checking...' : (generatedDates.includes(date) ? 'Already Generated' : 'Generate Schedule')}
