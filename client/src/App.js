@@ -6,13 +6,14 @@ import ScheduleExport from './ScheduleExport';
 import FinalizeMatches from './FinalizeMatches';
 import Login from './Login';
 import PublicPerformance from './PublicPerformance';
+import PublicComparison from './PublicComparison';
 import { isAuthenticated, getUser, logout, api } from './utils/api';
 import './App.css';
 
 function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [currentView, setCurrentView] = useState('home'); // 'home', 'leaderboard', 'performance', 'admin', 'results', 'attendance', 'finalize', 'export'
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'leaderboard', 'performance', 'compare', 'admin', 'results', 'attendance', 'finalize', 'export'
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -140,6 +141,18 @@ function App() {
                     View Details
                   </button>
                 </div>
+
+                <div className="action-card">
+                  <div className="card-icon">📈</div>
+                  <h3>Compare Players</h3>
+                  <p>Graph player rating trends side-by-side</p>
+                  <button 
+                    onClick={() => setCurrentView('compare')}
+                    className="action-btn"
+                  >
+                    Compare
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -165,6 +178,18 @@ function App() {
                 <h2>Player Performance</h2>
               </div>
               <PublicPerformance initialPlayerId={selectedPlayerId} />
+            </div>
+          )}
+
+          {currentView === 'compare' && (
+            <div className="page-container">
+              <div className="page-header">
+                <button className="back-btn" onClick={() => setCurrentView('home')}>
+                  ← Back
+                </button>
+                <h2>Compare Players</h2>
+              </div>
+              <PublicComparison />
             </div>
           )}
 

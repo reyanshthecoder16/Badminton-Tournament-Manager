@@ -44,6 +44,21 @@ router.post('/matches', async (req, res) => {
 });
 
 // GET /api/public/players/performance - Public access to player performance
+/**
+ * @swagger
+ * /api/public/players/snapshots:
+ *   get:
+ *     summary: Get player rating snapshots (public access)
+ *     responses:
+ *       200:
+ *         description: List of players with rating snapshots
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 // GET /api/public/players/snapshots - performance snapshots per player per finalized match day
 router.get('/players/snapshots', async (req, res) => {
   try {

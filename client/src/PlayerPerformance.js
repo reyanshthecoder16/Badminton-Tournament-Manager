@@ -43,6 +43,12 @@ function PlayerPerformance() {
   // 2. Sort players by currentRating descending
   const sortedPlayers = [...players].sort((a, b) => b.currentRating - a.currentRating);
 
+  // 2b. Build a map of playerId -> rank based on overall rating order
+  const rankById = {};
+  sortedPlayers.forEach((p, index) => {
+    rankById[p.id] = index + 1;
+  });
+
   // 3. Helper to compute rating as of a date
   function getRatingOnDate(player, date) {
     let rating = player.initialRating;
@@ -73,9 +79,9 @@ function PlayerPerformance() {
           </tr>
         </thead>
         <tbody>
-          {sortedPlayers.map((player, idx) => (
+          {sortedPlayers.map((player) => (
             <tr key={player.id}>
-              <td>{idx + 1}</td>
+              <td>{rankById[player.id]}</td>
               <td>{player.name}</td>
               <td>{player.currentRating}</td>
               {allDates.map(date => (
