@@ -70,7 +70,7 @@ function PublicHighlights() {
         </div>
         <div className="control">
           <label>Items</label>
-          <select value={limit} onChange={e => setLimit(parseInt(e.target.value, 5))}>
+          <select value={limit} onChange={e => setLimit(parseInt(e.target.value, 10))}>
             {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
