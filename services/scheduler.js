@@ -163,7 +163,8 @@ async function finalizeMatches(matchDayId) {
       for (const absent of absentees) {
         const player = await Player.findByPk(absent.PlayerId);
         if (player) {
-          await player.update({ currentRating: player.currentRating - 10, lastRatingUpdatedOn: now });
+          await player.update({ currentRating: player.currentRating - 10, 
+            lastRatingUpdatedOn: now });
           await RatingAwards.create({
             Rating: -10,
             PlayerId: player.id,

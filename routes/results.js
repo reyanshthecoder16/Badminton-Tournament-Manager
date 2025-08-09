@@ -138,7 +138,7 @@ router.put('/:id', async (req, res) => {
     const score = updateData.score || match.score;
 
     // If match has winner and score, recalculate ratings
-    if (winnerIds && winnerIds.length > 0 && score) {
+    if (winnerIds && winnerIds.length > 0) {
       await recordResult(matchId, winnerIds, score);
     }
 
