@@ -10,7 +10,7 @@
  */
 import React, { useState, useEffect } from 'react';
 
-export default function PlayerSelector({ players, selected, onChange, max, label }) {
+export default function PlayerSelector({ players, selected, onChange, max, label, maxHeight }) {
   const [search, setSearch] = useState('');
   const [localSelected, setLocalSelected] = useState(selected || []);
 
@@ -82,7 +82,7 @@ export default function PlayerSelector({ players, selected, onChange, max, label
         </div>
       )}
 
-      <div className="player-selector-list">
+      <div className="player-selector-list" style={maxHeight ? { maxHeight } : undefined}>
         {filteredPlayers.map(player => (
           <label key={player.id} className="player-selector-item">
             <input
