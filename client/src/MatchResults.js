@@ -601,14 +601,15 @@ function MatchResults() {
       >
         + Add Match
       </button>
+      <div className="table-scroll">
       <table className="match-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th className="col-id">ID</th>
             <th>Date</th>
             <th>Court</th>
             <th>Code</th>
-            <th>Type</th>
+            <th className="col-type">Type</th>
             <th colSpan={2}>Teams</th>
             <th>Winner</th>
             <th>Score</th>
@@ -629,11 +630,11 @@ function MatchResults() {
             const strongerTeam = getStrongerTeam(currentTeam1Ids, currentTeam2Ids);
             return (
               <tr key={match.id}>
-                <td>{match.id}</td>
+                <td className="col-id">{match.id}</td>
                 <td>{formatDate(match.date)}</td>
                 <td>{match.court}</td>
                 <td>{match.matchCode}</td>
-                <td>{match.matchType}</td>
+                <td className="col-type">{match.matchType}</td>
                 <td className={`team-cell ${strongerTeam === 'team1' ? 'team-strong' : strongerTeam === 'team2' ? 'team-weak' : 'team-equal'}`}>
                   <b>Team 1</b>
                   <ul className="list-indent">
@@ -723,7 +724,7 @@ function MatchResults() {
                   )}
                 </td>
                 <td>
-                  <div style={{display:'flex',gap:8}}>
+                  <div className="winner-actions">
                     <button
                       className={
                         currentWinner === 'team1'
@@ -753,7 +754,7 @@ function MatchResults() {
                   />
                 </td>
                 <td>
-                  <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <div className="row-actions">
                     <button
                       className="update-btn"
                       onClick={() => handleUpdate(match.id, match)}
@@ -777,6 +778,7 @@ function MatchResults() {
           })}
         </tbody>
       </table>
+      </div>
       {validationError && <div style={{color:'red',marginTop:16}}>{validationError}</div>}
       
       {/* Manual Match Creation Modal */}
@@ -852,61 +854,53 @@ function MatchResults() {
         </div>
       )}
       <style>{`
-        .match-results-container {
-          max-width: 1100px;
-          margin: 32px auto;
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-          padding: 32px 24px 24px 24px;
-        }
+        .match-results-container { max-width: 1100px; margin: 24px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 20px 18px; }
         .match-results-container h2 {
           text-align: center;
-          margin-bottom: 24px;
+          margin-bottom: 12px;
         }
-        .sort-controls {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 18px;
-          justify-content: center;
-        }
+        .filter-controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; margin-bottom:10px; }
+        .finalized-warning { color:#c62828; font-weight:600; font-size:0.9rem; }
+        .sort-controls { display: flex; flex-wrap:wrap; align-items: center; gap: 8px; margin-bottom: 12px; justify-content: center; }
         .sort-controls button {
           background: #f0f0f0;
           border: none;
           border-radius: 4px;
-          padding: 6px 14px;
-          font-size: 1rem;
+          padding: 6px 12px;
+          font-size: 0.95rem;
           cursor: pointer;
           transition: background 0.2s;
         }
         .sort-controls button.active, .sort-controls button:hover {
           background: #b3e6ff;
         }
+        .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .match-table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 16px;
+          margin-top: 8px;
         }
         .match-table th, .match-table td {
           border: 1px solid #e0e0e0;
-          padding: 8px 12px;
+          padding: 8px 10px;
           text-align: left;
           vertical-align: top;
         }
         .match-table th {
           background: #f5f5f5;
           font-weight: 600;
+          white-space: nowrap;
         }
         .update-btn {
           background: #4CAF50;
           color: white;
           border: none;
-          padding: 6px 12px;
+          padding: 6px 10px;
           border-radius: 4px;
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.88rem;
         }
+        .update-btn.small { padding: 4px 8px; font-size: 0.8rem; }
         .update-btn:hover {
           background: #45a049;
         }
@@ -935,13 +929,9 @@ function MatchResults() {
           opacity: 0.5;
           cursor: not-allowed;
         }
-        .score-input {
-          width: 80px;
-          padding: 4px 8px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 0.9rem;
-        }
+        .winner-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .score-input { width: 86px; max-width: 100%; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+        .row-actions { display:flex; flex-direction:column; gap:4px; }
         .modal-bg {
           position: fixed;
           top: 0;
@@ -963,10 +953,7 @@ function MatchResults() {
           max-height: 80vh;
           overflow-y: auto;
         }
-        .team-cell {
-          position: relative;
-          background: #fafafa;
-        }
+        .team-cell { position: relative; background: #fafafa; }
         .team-strong {
           background: #e8f5e9; /* green tint */
           box-shadow: inset 4px 0 0 #2e7d32;
@@ -978,6 +965,18 @@ function MatchResults() {
         .team-equal {
           background: #fffde7; /* amber tint */
           box-shadow: inset 4px 0 0 #f9a825;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+          .match-results-container { margin: 0; border-radius: 0; box-shadow: none; padding: 12px 8px; }
+          .sort-controls button { padding: 6px 10px; font-size: 0.85rem; }
+          .col-id, .col-type { display: none; }
+          .match-table th, .match-table td { padding: 8px 6px; font-size: 0.9rem; }
+          .row-actions { flex-direction: row; gap: 6px; }
+          .update-btn, .delete-btn { padding: 6px 8px; font-size: 0.82rem; }
+          .winner-actions { gap: 6px; }
+          .score-input { width: 72px; }
         }
       `}</style>
     </div>
