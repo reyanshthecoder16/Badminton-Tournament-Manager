@@ -39,6 +39,12 @@ body {
   gap: 1rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .header-content h1 {
   margin: 0;
   font-size: 1.5rem;
@@ -84,6 +90,27 @@ body {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+.home-link-btn {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.home-link-btn:hover {
+  background: rgba(255,255,255,0.25);
+  transform: scale(1.05);
 }
 
 .admin-link-btn:hover {
@@ -196,6 +223,31 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
   margin-top: 2rem;
+}
+
+/* Public tab navigation (compact, persistent on Home) */
+.public-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 12px auto 4px;
+}
+.public-tab {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.public-tab:hover { background: #f9fafb; }
+.public-tab.active {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  color: white;
+  border-color: transparent;
 }
 
 .action-card {
@@ -446,13 +498,14 @@ body {
     color: white;
   }
   
-  .app-main {
-    padding: 0.5rem;
-  }
+  .app-main { padding: 0; max-width: none; }
+  .page-container { border-radius: 0; box-shadow: none; padding: 0.75rem 0.5rem; }
   
   .hero-section h2 {
     font-size: 2rem;
   }
+
+  .public-tab { padding: 8px 10px; font-size: 0.92rem; }
   
   .action-cards {
     grid-template-columns: 1fr;

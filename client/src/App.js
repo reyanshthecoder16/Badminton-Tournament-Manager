@@ -38,6 +38,27 @@ function App() {
     checkAuth();
   }, []);
 
+  // Public hash-based routing for easier browsing between public screens
+  useEffect(() => {
+    if (authenticated) return; // only apply to public views
+    const normalize = (hash) => (hash || '').replace('#', '') || 'home';
+    const applyFromHash = () => setCurrentView(normalize(window.location.hash));
+    applyFromHash();
+    window.addEventListener('hashchange', applyFromHash);
+    return () => window.removeEventListener('hashchange', applyFromHash);
+  }, [authenticated]);
+
+  const setPublicView = (view) => {
+    if (authenticated) { setCurrentView(view); return; }
+    const allowed = new Set(['home','leaderboard','performance','compare','highlights','login']);
+    const v = allowed.has(view) ? view : 'home';
+    if (window.location.hash !== `#${v}`) {
+      window.location.hash = `#${v}`;
+    } else {
+      setCurrentView(v);
+    }
+  };
+
   const handleLogin = (loginData) => {
     setAuthenticated(true);
     setUser(loginData.user);
@@ -99,13 +120,22 @@ function App() {
         <header className="app-header">
           <div className="header-content">
             <h1>🏸 Badminton Tournament Manager</h1>
-            <button 
-              className="admin-link-btn"
-              onClick={() => setCurrentView('login')}
-              title="Admin Login"
-            >
-              🔐 Admin
-            </button>
+            <div className="header-actions">
+              <button 
+                className="home-link-btn"
+                onClick={() => setPublicView('home')}
+                title="Home"
+              >
+                🏠 Home
+              </button>
+              <button 
+                className="admin-link-btn"
+                onClick={() => setPublicView('login')}
+                title="Admin Login"
+              >
+                🔐 Admin
+              </button>
+            </div>
           </div>
         </header>
 
@@ -115,9 +145,18 @@ function App() {
               <div className="hero-section">
                 <div className="hero-content">
                   <h2>Track Performance & Rankings</h2>
-                  <p>View player statistics, match history, and live rankings</p>
+                  <p>View player statistics, Match highlights, Leaderboard and more</p>
                 </div>
               </div>
+
+              {/* Public tabs for quick navigation */}
+              <nav className="public-nav">
+                <button className={`public-tab ${currentView==='home'?'active':''}`} onClick={() => setPublicView('home')}>Home</button>
+                <button className={`public-tab ${currentView==='leaderboard'?'active':''}`} onClick={() => setPublicView('leaderboard')}>Leaderboard</button>
+                <button className={`public-tab ${currentView==='highlights'?'active':''}`} onClick={() => setPublicView('highlights')}>Highlights</button>
+                <button className={`public-tab ${currentView==='performance'?'active':''}`} onClick={() => setPublicView('performance')}>Performance</button>
+                <button className={`public-tab ${currentView==='compare'?'active':''}`} onClick={() => setPublicView('compare')}>Compare</button>
+              </nav>
 
               <div className="action-cards">
                 <div className="action-card">
@@ -125,7 +164,7 @@ function App() {
                   <h3>Leaderboard</h3>
                   <p>Track player ratings over time with visual trends</p>
                   <button 
-                    onClick={() => setCurrentView('leaderboard')}
+                    onClick={() => setPublicView('leaderboard')}
                     className="action-btn"
                   >
                     View Leaderboard
@@ -138,7 +177,7 @@ function App() {
                   <h3>Matchday Highlights</h3>
                   <p>Top gainers, closest thrillers, and one-sided wins</p>
                   <button 
-                    onClick={() => setCurrentView('highlights')}
+                    onClick={() => setPublicView('highlights')}
                     className="action-btn"
                   >
                     View Highlights
@@ -150,7 +189,7 @@ function App() {
                   <h3>Player Performance</h3>
                   <p>Detailed player rankings and match history</p>
                   <button 
-                    onClick={() => setCurrentView('performance')}
+                    onClick={() => setPublicView('performance')}
                     className="action-btn"
                   >
                     View Details
@@ -162,7 +201,7 @@ function App() {
                   <h3>Compare Players</h3>
                   <p>Graph player rating trends side-by-side</p>
                   <button 
-                    onClick={() => setCurrentView('compare')}
+                    onClick={() => setPublicView('compare')}
                     className="action-btn"
                   >
                     Compare
@@ -174,60 +213,35 @@ function App() {
 
           {currentView === 'leaderboard' && (
             <div className="page-container">
-              <div className="page-header">
-                <button className="back-btn" onClick={() => setCurrentView('home')}>
-                  ← Back
-                </button>
-                <h2>Leaderboard</h2>
-              </div>
+              <div className="page-header"><h2>Leaderboard</h2></div>
               <PlayerPerformanceMatrix onPlayerClick={(playerId) => { setSelectedPlayerId(playerId); setCurrentView('performance'); }} />
             </div>
           )}
 
           {currentView === 'performance' && (
             <div className="page-container">
-              <div className="page-header">
-                <button className="back-btn" onClick={() => setCurrentView('home')}>
-                  ← Back
-                </button>
-                <h2>Player Performance</h2>
-              </div>
+              <div className="page-header"><h2>Player Performance</h2></div>
               <PublicPerformance initialPlayerId={selectedPlayerId} />
             </div>
           )}
 
           {currentView === 'compare' && (
             <div className="page-container">
-              <div className="page-header">
-                <button className="back-btn" onClick={() => setCurrentView('home')}>
-                  ← Back
-                </button>
-                <h2>Compare Players</h2>
-              </div>
+              <div className="page-header"><h2>Compare Players</h2></div>
               <PublicComparison />
             </div>
           )}
 
           {currentView === 'highlights' && (
             <div className="page-container">
-              <div className="page-header">
-                <button className="back-btn" onClick={() => setCurrentView('home')}>
-                  ← Back
-                </button>
-                <h2>Matchday Highlights</h2>
-              </div>
+              <div className="page-header"><h2>Matchday Highlights</h2></div>
               <PublicHighlights />
             </div>
           )}
 
           {currentView === 'login' && (
             <div className="page-container">
-              <div className="page-header">
-                <button className="back-btn" onClick={() => setCurrentView('home')}>
-                  ← Back
-                </button>
-                <h2>Admin Login</h2>
-              </div>
+              <div className="page-header"><h2>Admin Login</h2></div>
               <Login onLogin={handleLogin} />
             </div>
           )}

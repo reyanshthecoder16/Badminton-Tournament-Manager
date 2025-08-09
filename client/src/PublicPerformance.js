@@ -198,9 +198,6 @@ function PublicPerformance({ initialPlayerId }) {
 
   return (
     <div className="public-performance-container">
-      <div className="header-section">
-        <h1>Detailed Player Performance</h1>
-      </div>
 
       <div className="controls-section">
         <div className="search-box">

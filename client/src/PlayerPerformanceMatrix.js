@@ -68,7 +68,6 @@ function PlayerPerformanceMatrix({ reloadRef, onReloaded, onPlayerClick }) {
 
   return (
     <div className="matrix-container">
-      <h2>Player Performance Leaderboard</h2>
       <div className="matrix-scroll">
         <table className="matrix-table leaderboard-view">
           <thead>

@@ -73,7 +73,6 @@ export default function PublicComparison() {
 
   return (
     <div className="comparison-container" style={{maxWidth:1000, margin:'0 auto', padding:16}}>
-      <h1 style={{textAlign:'center'}}>Compare Player Performance</h1>
 
       <PlayerSelector
         players={allPlayers.map(({id,name})=>({id,name}))}
