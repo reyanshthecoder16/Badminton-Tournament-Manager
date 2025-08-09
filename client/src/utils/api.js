@@ -202,6 +202,7 @@ export const api = {
   // Results
   getResults: () => apiRequest('/results'),
   getMatches: () => apiRequest('/results/matches'),
+  getFinalizePreview: (matchDayId) => apiRequest(`/results/preview/${matchDayId}`),
   finalizeMatches: (matchDayData) => apiRequest('/results/finalizeMatches', {
     method: 'POST',
     body: JSON.stringify(matchDayData),

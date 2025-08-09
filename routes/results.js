@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { recordResult, finalizeMatches } = require('../services/scheduler');
+const { Match, RatingAwards } = require('../models/Match');
+const Player = require('../models/Player');
+const MatchDay = require('../models/MatchDay');
+const Attendance = require('../models/Attendance');
 
 /**
  * @swagger
@@ -69,6 +73,118 @@ router.post('/', async (req, res) => {
   const { matchId, winnerIds, score } = req.body;
   const result = await recordResult(matchId, winnerIds, score);
   res.json(result);
+});
+
+/**
+ * GET /api/results/preview/:matchDayId
+ * Returns per-player rating delta preview for the selected match day, including absence penalties
+ * and per-match breakdown for validation prior to finalization.
+ */
+router.get('/preview/:matchDayId', async (req, res) => {
+  try {
+    const { matchDayId } = req.params;
+    if (!matchDayId) return res.status(400).json({ error: 'matchDayId required' });
+
+    // Ensure match day exists
+    const matchDay = await MatchDay.findByPk(matchDayId);
+    if (!matchDay) return res.status(404).json({ error: 'MatchDay not found' });
+
+    // Fetch all matches for the day
+    const matches = await Match.findAll({ where: { MatchDayId: matchDayId }, order: [['court', 'ASC'], ['matchCode', 'ASC']] });
+    const matchIds = matches.map(m => m.id);
+
+    // Build enriched match details (include team players)
+    const matchIdToDetail = {};
+    for (const match of matches) {
+      const team1Players = match.team1 ? await Player.findAll({ where: { id: match.team1 } }) : [];
+      const team2Players = match.team2 ? await Player.findAll({ where: { id: match.team2 } }) : [];
+      matchIdToDetail[match.id] = {
+        id: match.id,
+        matchCode: match.matchCode,
+        court: match.court,
+        score: match.score || '',
+        team1Players,
+        team2Players,
+      };
+    }
+
+    // Fetch rating awards for these matches
+    const awards = matchIds.length ? await RatingAwards.findAll({ where: { MatchId: matchIds } }) : [];
+
+    // Prepare player map with current rating and breakdown
+    const playerIdToPreview = {};
+
+    // Helper to ensure player entry exists
+    const ensurePlayerEntry = async (playerId) => {
+      if (!playerIdToPreview[playerId]) {
+        const player = await Player.findByPk(playerId);
+        if (!player) return null;
+        playerIdToPreview[playerId] = {
+          playerId: player.id,
+          name: player.name,
+          currentRating: player.currentRating,
+          totalDelta: 0,
+          breakdown: [],
+        };
+      }
+      return playerIdToPreview[playerId];
+    };
+
+    // Aggregate per-match award deltas
+    for (const award of awards) {
+      const detail = matchIdToDetail[award.MatchId];
+      const entry = await ensurePlayerEntry(award.PlayerId);
+      if (!entry) continue;
+      entry.totalDelta += (award.Rating || 0);
+      entry.breakdown.push({
+        type: 'match',
+        matchId: detail?.id,
+        matchCode: detail?.matchCode,
+        court: detail?.court,
+        score: detail?.score,
+        team1Names: (detail?.team1Players || []).map(p => p.name),
+        team2Names: (detail?.team2Players || []).map(p => p.name),
+        points: award.Rating || 0,
+      });
+    }
+
+    // Load attendance for the day and mark presence; apply -10 for absentees
+    const attendanceAll = await Attendance.findAll({ where: { MatchDayId: matchDayId }, include: [Player] });
+    for (const att of attendanceAll) {
+      const entry = await ensurePlayerEntry(att.PlayerId);
+      if (!entry) continue;
+      // Prefer name from attendance include if present
+      if (!entry.name && att.Player) entry.name = att.Player.name;
+      entry.present = !!att.present;
+      if (!att.present) {
+        entry.totalDelta += -10;
+        entry.breakdown.push({
+          type: 'absence',
+          matchId: null,
+          matchCode: 'ABS',
+          court: null,
+          score: '',
+          team1Names: [],
+          team2Names: [],
+          points: -10,
+        });
+      }
+    }
+
+    // Convert to array and compute predicted ratings
+    const playersPreview = Object.values(playerIdToPreview).map(p => ({
+      ...p,
+      predictedRating: p.currentRating + p.totalDelta,
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    res.json({
+      matchDay: { id: matchDay.id, date: matchDay.date, finalized: matchDay.finalized },
+      players: playersPreview,
+    });
+  } catch (error) {
+    console.error('Error building preview:', error);
+    res.status(500).json({ error: 'Failed to build preview' });
+  }
 });
 
 // PUT /api/results/:id - Update individual match result
