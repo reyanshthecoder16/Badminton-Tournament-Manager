@@ -268,6 +268,7 @@ export const api = {
   getPublicMatchDetails: (matchId) => publicApiRequest(`/public/matches/${matchId}`),
   getPublicMatchDays: () => publicApiRequest('/public/schedule/matchdays'),
   getTopPlayersByRatingChange: (matchDay) => publicApiRequest(`/public/players/top-by-rating-change?matchDay=${matchDay}`),
+  getPublicHighlights: (matchDay, limit = 10) => publicApiRequest(`/public/highlights?matchDay=${encodeURIComponent(matchDay)}&limit=${limit}`),
 };
 
 export {

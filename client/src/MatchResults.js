@@ -531,6 +531,27 @@ function MatchResults() {
     return `${day}-${month}-${year}`;
   };
 
+  // Compute team rating sums (current and initial)
+  const getTeamRatingSums = (playerIds = []) => {
+    return playerIds.reduce((acc, pid) => {
+      const player = players.find(p => p.id == pid);
+      const current = player?.currentRating ?? 0;
+      const initial = player?.initialRating ?? 0;
+      return { sumCurrent: acc.sumCurrent + current, sumInitial: acc.sumInitial + initial };
+    }, { sumCurrent: 0, sumInitial: 0 });
+  };
+
+  // Decide stronger team: higher sum of currentRating; tie-breaker higher sum of initialRating
+  const getStrongerTeam = (team1Ids = [], team2Ids = []) => {
+    const t1 = getTeamRatingSums(team1Ids);
+    const t2 = getTeamRatingSums(team2Ids);
+    if (t1.sumCurrent > t2.sumCurrent) return 'team1';
+    if (t1.sumCurrent < t2.sumCurrent) return 'team2';
+    if (t1.sumInitial > t2.sumInitial) return 'team1';
+    if (t1.sumInitial < t2.sumInitial) return 'team2';
+    return 'equal';
+  };
+
   if (loading) return <div>Loading matches...</div>;
   if (error) return <div>Error: {error}</div>;
   if (playersLoading) return <div>Loading players...</div>;
@@ -605,6 +626,7 @@ function MatchResults() {
             const currentTeam1Ids = localTeams[match.id]?.team1 || team1.map(p => p.id || p);
             const currentTeam2Ids = localTeams[match.id]?.team2 || team2.map(p => p.id || p);
             
+            const strongerTeam = getStrongerTeam(currentTeam1Ids, currentTeam2Ids);
             return (
               <tr key={match.id}>
                 <td>{match.id}</td>
@@ -612,7 +634,7 @@ function MatchResults() {
                 <td>{match.court}</td>
                 <td>{match.matchCode}</td>
                 <td>{match.matchType}</td>
-                <td>
+                <td className={`team-cell ${strongerTeam === 'team1' ? 'team-strong' : strongerTeam === 'team2' ? 'team-weak' : 'team-equal'}`}>
                   <b>Team 1</b>
                   <ul className="list-indent">
                     {currentTeam1Ids.map(pid => (
@@ -656,7 +678,7 @@ function MatchResults() {
                     </div>
                   )}
                 </td>
-                <td>
+                <td className={`team-cell ${strongerTeam === 'team2' ? 'team-strong' : strongerTeam === 'team1' ? 'team-weak' : 'team-equal'}`}>
                   <b>Team 2</b>
                   <ul className="list-indent">
                     {currentTeam2Ids.map(pid => (
@@ -940,6 +962,22 @@ function MatchResults() {
           width: 90%;
           max-height: 80vh;
           overflow-y: auto;
+        }
+        .team-cell {
+          position: relative;
+          background: #fafafa;
+        }
+        .team-strong {
+          background: #e8f5e9; /* green tint */
+          box-shadow: inset 4px 0 0 #2e7d32;
+        }
+        .team-weak {
+          background: #ffebee; /* red tint */
+          box-shadow: inset 4px 0 0 #c62828;
+        }
+        .team-equal {
+          background: #fffde7; /* amber tint */
+          box-shadow: inset 4px 0 0 #f9a825;
         }
       `}</style>
     </div>

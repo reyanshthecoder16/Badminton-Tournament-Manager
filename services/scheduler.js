@@ -91,11 +91,18 @@ async function recordResult(matchId, winnerIds, score) {
   if (["M1","M2","M3","M4"].includes(code)) { wDelta=5; lDelta=-5; }
   else if (["M5","M6","M7","M8"].includes(code)) { wDelta=10; lDelta=-10; }
   else if (["M9","M10","M11","M12"].includes(code)) {
-    const winningTeamRatingsSum = winners.reduce((s,p)=>s+(p.currentRating||0),0);
-    const losingTeamRatingsSum = losers.reduce((s,p)=>s+(p.currentRating||0),0);
-    console.log(`winningTeamRatingsSum: ${winningTeamRatingsSum}, losingTeamRatingsSum: ${losingTeamRatingsSum}`);
-    
-    const isWiningTeamWeaker = winningTeamRatingsSum<losingTeamRatingsSum;
+    const winningTeamCurrentRatingsSum = winners.reduce((s,p)=>s+(p.currentRating||0),0);
+    const losingTeamCurrentRatingsSum = losers.reduce((s,p)=>s+(p.currentRating||0),0);
+    console.log(`winningTeamCurrentRatingsSum: ${winningTeamCurrentRatingsSum}, losingTeamRatingsSum: ${losingTeamCurrentRatingsSum}`);
+
+    const winningTeamInitialRatingsSum = winners.reduce((s,p)=>s+(p.initialRating||0),0);
+    const losingTeamInitialRatingsSum = losers.reduce((s,p)=>s+(p.initialRating||0),0);
+    console.log(`winningTeamInitialRatingsSum: ${winningTeamInitialRatingsSum}, losingTeamInitialRatingsSum: ${losingTeamInitialRatingsSum}`);
+
+    // Determine weaker team: prefer current rating sums; if equal, fall back to initial rating sums
+    const isWiningTeamWeaker = (winningTeamCurrentRatingsSum === losingTeamCurrentRatingsSum)
+      ? (winningTeamInitialRatingsSum < losingTeamInitialRatingsSum)
+      : (winningTeamCurrentRatingsSum < losingTeamCurrentRatingsSum);
     console.log(`isWiningTeamWeaker: ${isWiningTeamWeaker}`);
     if (["M9","M10"].includes(code))
       [wDelta,lDelta] = isWiningTeamWeaker ? [10,-10] : [5,-5];

@@ -7,6 +7,7 @@ import FinalizeMatches from './FinalizeMatches';
 import Login from './Login';
 import PublicPerformance from './PublicPerformance';
 import PublicComparison from './PublicComparison';
+import PublicHighlights from './PublicHighlights';
 import PlayerManagement from './PlayerManagement';
 import { isAuthenticated, getUser, logout, api } from './utils/api';
 import './App.css';
@@ -131,6 +132,19 @@ function App() {
                   </button>
                 </div>
 
+                {/* Moved Highlights to second position */}
+                <div className="action-card">
+                  <div className="card-icon">✨</div>
+                  <h3>Matchday Highlights</h3>
+                  <p>Top gainers, closest thrillers, and one-sided wins</p>
+                  <button 
+                    onClick={() => setCurrentView('highlights')}
+                    className="action-btn"
+                  >
+                    View Highlights
+                  </button>
+                </div>
+
                 <div className="action-card">
                   <div className="card-icon">👥</div>
                   <h3>Player Performance</h3>
@@ -191,6 +205,18 @@ function App() {
                 <h2>Compare Players</h2>
               </div>
               <PublicComparison />
+            </div>
+          )}
+
+          {currentView === 'highlights' && (
+            <div className="page-container">
+              <div className="page-header">
+                <button className="back-btn" onClick={() => setCurrentView('home')}>
+                  ← Back
+                </button>
+                <h2>Matchday Highlights</h2>
+              </div>
+              <PublicHighlights />
             </div>
           )}
 
